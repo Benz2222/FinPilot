@@ -4,6 +4,8 @@ FinPilot giúp chủ shop online trả lời: **“Nhập hàng hôm nay có khi
 
 Backend dùng ASP.NET Core Web API .NET 10, EF Core 10 + Npgsql và PostgreSQL 17. Identity xác thực bằng cookie HttpOnly; frontend dùng React + TypeScript + Vite. ClosedXML và CsvHelper phục vụ import ở sprint sau.
 
+Sản phẩm, nghiên cứu, lộ trình và việc tuần 6: [docs/](docs/README.md).
+
 Tiền VND dùng số nguyên `decimal` trong C#, `numeric(18,0)` trong database và **chuỗi JSON** như `"50000000"` khi qua API. Không làm tròn phần lẻ. Ngày nghiệp vụ dùng `DateOnly`.
 
 ## Yêu cầu

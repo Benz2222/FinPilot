@@ -1,4 +1,4 @@
-import type { ForecastRequest, ForecastResponse, ProblemDetails } from './types'
+import type { ForecastRequest, ForecastResponse, ImportPreview, ProblemDetails } from './types'
 
 /** Failure talking to the API. `status === 0` means the request never got an HTTP response. */
 export class ApiError extends Error {
@@ -30,18 +30,49 @@ function isForecastResponse(body: unknown): body is ForecastResponse {
   return Array.isArray(b.days) && Array.isArray(b.unresolvedEvents) && Array.isArray(b.eventsAfterHorizon)
 }
 
+function isImportPreview(body: unknown): body is ImportPreview {
+  if (!body || typeof body !== 'object') return false
+  const b = body as ImportPreview
+  return typeof b.fileSha256 === 'string' && Array.isArray(b.rows)
+}
+
 /** POST /api/forecast/preview. Auth is the backend's HttpOnly cookie, so nothing is stored client-side. */
 export async function previewForecast(
   request: ForecastRequest,
   signal?: AbortSignal,
 ): Promise<ForecastResponse> {
+  return send(
+    '/api/forecast/preview',
+    { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(request) },
+    isForecastResponse,
+    signal,
+  )
+}
+
+/** POST /api/import/preview: parses and validates a CSV/XLSX file; nothing is saved server-side. */
+export async function previewImport(file: File, signal?: AbortSignal): Promise<ImportPreview> {
+  const form = new FormData()
+  form.append('file', file)
+  return send('/api/import/preview', { body: form }, isImportPreview, signal)
+}
+
+export function importTemplateUrl(format: 'csv' | 'xlsx'): string {
+  return `/api/import/template?format=${format}`
+}
+
+async function send<T>(
+  url: string,
+  init: { headers?: Record<string, string>; body: BodyInit },
+  isExpected: (body: unknown) => body is T,
+  signal?: AbortSignal,
+): Promise<T> {
   let response: Response
   try {
-    response = await fetch('/api/forecast/preview', {
+    response = await fetch(url, {
       method: 'POST',
       credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify(request),
+      headers: { Accept: 'application/json', ...init.headers },
+      body: init.body,
       signal,
     })
   } catch (error) {
@@ -60,6 +91,6 @@ export async function previewForecast(
   } catch {
     throw new ApiError(response.status, 'Invalid JSON in response')
   }
-  if (!isForecastResponse(body)) throw new ApiError(response.status, 'Unexpected response shape')
+  if (!isExpected(body)) throw new ApiError(response.status, 'Unexpected response shape')
   return body
 }

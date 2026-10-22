@@ -50,3 +50,24 @@ export interface ProblemDetails {
   instance?: string
   errors?: Record<string, string[]>
 }
+
+export type ImportColumn = 'loai' | 'noiDung' | 'soTien' | 'ngay' | 'daThanhToan' | 'ghiChu'
+
+export interface ImportRow {
+  rowNumber: number
+  direction: Direction | null
+  label: string | null
+  amount: Money | null
+  date: IsoDate | null
+  paid: Money | null
+  note: string | null
+  errors: { column: ImportColumn; message: string }[]
+}
+
+export interface ImportPreview {
+  fileName: string
+  fileSha256: string
+  rows: ImportRow[]
+  validCount: number
+  errorCount: number
+}

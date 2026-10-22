@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using FinPilot.Api.Data;
 using FinPilot.Api.Json;
+using FinPilot.Api.Import;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,6 +10,8 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException(
         "ConnectionStrings:Default is required. In Development, configure it with dotnet user-secrets for FinPilot.Api.");
+
+builder.Services.AddSingleton<ImportPreviewService>();
 
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
@@ -77,3 +80,5 @@ app.MapControllers();
 app.MapFallbackToFile("index.html");
 
 app.Run();
+
+public partial class Program;

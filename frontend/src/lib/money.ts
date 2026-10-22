@@ -44,3 +44,41 @@ export function formatCompactVnd(value: number): string {
   if (abs >= 1e3) return `${sign}${compactNumber.format(abs / 1e3)} k`
   return `${sign}${abs}`
 }
+
+/** Exact sum of whole-VND strings (BigInt). */
+export function addMoney(...values: Money[]): Money {
+  return values.reduce((total, v) => total + BigInt(v), 0n).toString()
+}
+
+/** Exact `a - b` (BigInt). */
+export function subtractMoney(a: Money, b: Money): Money {
+  return (BigInt(a) - BigInt(b)).toString()
+}
+
+/** -1, 0 or 1, exactly (BigInt). */
+export function compareMoney(a: Money, b: Money): number {
+  const d = BigInt(a) - BigInt(b)
+  return d < 0n ? -1 : d > 0n ? 1 : 0
+}
+
+/** Absolute value as a whole-VND string. */
+export function absMoney(value: Money): Money {
+  return value.startsWith('-') ? value.slice(1) : value
+}
+
+/** Plain spoken amount for sentences: `30000000` → `30 triệu`, `1500000000` → `1,5 tỷ`; uneven amounts stay exact. */
+export function formatMoneyWords(value: Money): string {
+  if (!WHOLE_NUMBER.test(value)) return formatVnd(value)
+  const n = BigInt(absMoney(value))
+  const sign = isNegative(value) ? '−' : ''
+  const exact = (unit: bigint, word: string, decimals: number) => {
+    const scaled = n * 10n ** BigInt(decimals)
+    if (scaled % unit !== 0n) return null
+    const whole = scaled / unit
+    const text = decimals === 0 ? vndNumber.format(whole) : compactNumber.format(Number(whole) / 10 ** decimals)
+    return `${sign}${text} ${word}`
+  }
+  if (n >= 1_000_000_000n) return exact(1_000_000_000n, 'tỷ', 1) ?? `${sign}${formatVnd(absMoney(value))}`
+  if (n >= 1_000_000n) return exact(1_000_000n, 'triệu', 1) ?? `${sign}${formatVnd(absMoney(value))}`
+  return `${sign}${formatVnd(absMoney(value))}`
+}

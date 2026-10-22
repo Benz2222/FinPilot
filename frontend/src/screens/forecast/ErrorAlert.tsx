@@ -47,7 +47,7 @@ function headline(error: ApiError): { title: string; hint?: string } {
     }
   }
   if (error.status >= 400) {
-    return { title: 'Dữ liệu chưa hợp lệ', hint: 'Sửa các mục dưới đây rồi bấm “Dự báo” lại.' }
+    return { title: 'Dữ liệu chưa hợp lệ', hint: 'Sửa các mục dưới đây trong Lịch thu–chi rồi thử lại.' }
   }
   return { title: 'Không thể hiển thị kết quả dự báo' }
 }

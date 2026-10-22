@@ -139,9 +139,9 @@ function ChartTooltip({ active, payload, eventsById }: ChartTooltipProps) {
           {events.map((e) => (
             <li key={e.id} className="flex items-center gap-1.5">
               {e.direction === 'In' ? (
-                <ArrowDownLeft aria-label="Thu" className="size-3 shrink-0 text-emerald-600" />
+                <ArrowDownLeft aria-label="Thu" className="size-3 shrink-0 text-(--balance)" />
               ) : (
-                <ArrowUpRight aria-label="Chi" className="size-3 shrink-0 text-rose-600" />
+                <ArrowUpRight aria-label="Chi" className="size-3 shrink-0 text-(--shortage)" />
               )}
               <span className="min-w-0 flex-1 truncate">{e.label}</span>
             </li>
@@ -149,7 +149,7 @@ function ChartTooltip({ active, payload, eventsById }: ChartTooltipProps) {
         </ul>
       )}
       {day.hasIntradayTimingRisk && (
-        <p className="mt-2 flex gap-1.5 border-t pt-2 text-amber-800">
+        <p className="mt-2 flex gap-1.5 border-t pt-2 text-(--caution)">
           <TriangleAlert aria-hidden="true" className="mt-px size-3.5 shrink-0" />
           {INTRADAY_RISK_NOTE}
         </p>
