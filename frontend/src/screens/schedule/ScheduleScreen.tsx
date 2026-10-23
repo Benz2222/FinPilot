@@ -39,15 +39,15 @@ function groupByWeek(items: Obligation[]): [string, Obligation[]][] {
   return [...weeks.entries()]
 }
 
-/** Date cell: day and weekday, and how soon it is. */
-function DateMark({ date, today }: { date: string; today: string }) {
+/** Date cell: day and weekday, and how soon it is (only while the item is still open; a countdown means nothing once it is done or cancelled). */
+function DateMark({ date, today, countdown }: { date: string; today: string; countdown: boolean }) {
   const n = diffDays(today, date)
   const soon = n === 0 ? 'Hôm nay' : n === 1 ? 'Ngày mai' : n > 0 ? `Còn ${n} ngày` : `${-n} ngày trước`
   return (
     <p className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:grid sm:justify-items-start sm:gap-0.5">
       <span className="num text-sm font-semibold text-foreground">{formatDate(date).slice(0, 5)}</span>
       <span className="text-xs text-muted-foreground">{formatWeekday(date)}</span>
-      {n >= 0 && n <= 2 ? (
+      {!countdown ? null : n >= 0 && n <= 2 ? (
         <Badge variant={n === 0 ? 'primary' : 'warning'} className="sm:mt-1">
           {soon}
         </Badge>
@@ -64,7 +64,7 @@ function Rows({ items, today, overdue = false }: { items: Obligation[]; today: s
     <ul className="divide-y">
       {items.map((o, i) => (
         <li key={o.id}>
-          <ObligationEntry obligation={o} overdue={overdue} date={i === 0 || items[i - 1].date !== o.date ? <DateMark date={o.date} today={today} /> : null} />
+          <ObligationEntry obligation={o} overdue={overdue} date={i === 0 || items[i - 1].date !== o.date ? <DateMark date={o.date} today={today} countdown={o.status === 'open'} /> : null} />
         </li>
       ))}
     </ul>
@@ -110,16 +110,18 @@ export function ScheduleScreen() {
       {overdue.length > 0 && (
         <Card className="overflow-hidden border-shortage-line">
           <section aria-labelledby="overdue-title">
-            <div className="flex gap-3 border-b border-shortage-line bg-shortage-soft px-4 py-3 sm:px-5">
-              <TriangleAlert aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-shortage" />
+            <div className="flex gap-3 border-b border-shortage-line bg-shortage-soft px-4 py-3.5 sm:px-5">
+              <span aria-hidden="true" className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-md border border-shortage bg-shortage-soft text-shortage">
+                <TriangleAlert className="size-4" />
+              </span>
               <div>
                 <h2 id="overdue-title" className="font-semibold text-shortage">
                   {overdue.length} khoản quá hạn cần ngày mới
                 </h2>
                 <p className="mt-0.5 max-w-3xl text-sm text-secondary-foreground">
-                  Các khoản này dự kiến vào hoặc trước ngày chốt {formatDate(balance!.cutoff)} nhưng chưa xong. Dự báo{' '}
-                  <strong className="font-semibold">không tính</strong> chúng và cũng không coi là đã trả hoặc đã thu: hãy chọn ngày mới, ghi nhận đã xong,
-                  hoặc hủy.
+                  Các khoản này hẹn vào hoặc trước ngày {formatDate(balance!.cutoff)} (ngày tính số dư hiện có) nhưng chưa xong. Dự báo{' '}
+                  <strong className="font-semibold text-foreground">không tính</strong> chúng và cũng không coi là đã trả hoặc đã thu: hãy chọn ngày mới, ghi
+                  nhận đã xong, hoặc hủy.
                 </p>
               </div>
             </div>
@@ -131,7 +133,8 @@ export function ScheduleScreen() {
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_21rem]">
         <Card className="lg:sticky lg:top-6 lg:col-start-2 lg:row-start-1">
           <section aria-labelledby="compose-title" className="p-4 sm:p-5">
-            <h2 id="compose-title" className="mb-4 text-base font-semibold">
+            {balance && open.length === 0 && <p className="placard mb-2 text-primary">Bước 2 / 2</p>}
+            <h2 id="compose-title" className="mb-4 text-lg font-semibold">
               Thêm khoản sắp thu / sắp chi
             </h2>
             {balance ? (
@@ -191,7 +194,7 @@ export function ScheduleScreen() {
             ) : (
               groupByWeek(upcoming).map(([monday, items]) => (
                 <section key={monday} aria-label={weekTitle(monday, today)} className="border-t">
-                  <h3 className="num bg-muted/60 px-4 py-2 text-xs font-medium text-muted-foreground sm:px-5">{weekTitle(monday, today)}</h3>
+                  <h3 className="placard bg-glass px-4 py-2.5 text-muted-foreground sm:px-5">{weekTitle(monday, today)}</h3>
                   <div className="border-t">
                     <Rows items={items} today={today} />
                   </div>
@@ -207,9 +210,9 @@ export function ScheduleScreen() {
                     aria-expanded={showDone}
                     aria-controls="done-list"
                     onClick={() => setShowDone((v) => !v)}
-                    className="h-11 w-full justify-start rounded-none px-4 text-muted-foreground sm:px-5"
+                    className="h-12 w-full justify-start rounded-none px-4 text-secondary-foreground sm:px-5"
                   >
-                    <ChevronDown aria-hidden="true" className={showDone ? 'rotate-180' : undefined} />
+                    <ChevronDown aria-hidden="true" className={showDone ? 'rotate-180 transition-transform' : 'transition-transform'} />
                     Đã xong hoặc đã hủy ({done.length})
                   </Button>
                 </h3>

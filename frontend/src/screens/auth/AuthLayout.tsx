@@ -5,27 +5,63 @@ import { Brand } from '@/components/brand'
 import { FieldError } from '@/components/fields'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
+import { Showcase, ShowcaseStrip } from './Showcase'
 
-/** Centered card on the neutral background: brand, title, one form, and the way to the other auth screens. */
-export function AuthLayout({ title, description, children, footer }: { title: string; description?: ReactNode; children: ReactNode; footer?: ReactNode }) {
+/**
+ * The sign-in frame: the form on the left, the product on the right (an example forecast that plays once). Phones and
+ * tablets get the brand and a one-line version of the example above the form, so the fields stay near the top.
+ */
+export function AuthLayout({
+  title,
+  description,
+  children,
+  footer,
+  aside,
+  steps = false,
+}: {
+  title: string
+  description?: ReactNode
+  children: ReactNode
+  footer?: ReactNode
+  /** Top-right of the form column (e.g. sign-out on "create shop"). */
+  aside?: ReactNode
+  /** Show the three first steps in the product panel (sign-up and shop creation). */
+  steps?: boolean
+}) {
   return (
-    <div className="flex min-h-svh flex-col bg-background px-4 py-8 sm:py-14">
-      <main className="mx-auto grid w-full max-w-[25rem] content-start gap-6">
-        <a href="/" className="justify-self-center rounded-md">
-          <Brand />
-        </a>
-        <div className="rounded-xl border bg-card p-6 shadow-[0_1px_3px_rgb(16_24_40/0.08)] sm:p-8">
-          <h1 id="screen-title" tabIndex={-1} className="text-xl font-semibold tracking-tight outline-none">
-            {title}
-          </h1>
-          {description && <p className="mt-1.5 text-sm text-muted-foreground">{description}</p>}
-          <div className="mt-6">{children}</div>
+    <div className="min-h-svh lg:grid lg:grid-cols-[minmax(26rem,32rem)_minmax(0,1fr)]">
+      <div className="flex min-h-svh flex-col px-5 py-6 sm:px-10 sm:py-8">
+        <div className="flex items-center justify-between gap-4">
+          <a href="/" className="rounded-md">
+            <Brand />
+          </a>
+          {aside}
         </div>
-        {footer && <p className="text-center text-sm text-muted-foreground">{footer}</p>}
-      </main>
-      <p className="mx-auto mt-auto max-w-md pt-10 text-center text-xs text-muted-foreground">
-        FinPilot tính số dư cuối mỗi ngày từ số dư bạn xác nhận và các khoản bạn nhập. Không phải dự báo AI.
-      </p>
+        <main className="mx-auto grid w-full max-w-[24rem] flex-1 content-center gap-6 py-8 lg:py-12">
+          <div className="lg:hidden">
+            <ShowcaseStrip />
+          </div>
+          <div>
+            <h1 id="screen-title" tabIndex={-1} className="text-2xl font-semibold tracking-tight outline-none sm:text-[1.75rem]">
+              {title}
+            </h1>
+            {description && <p className="mt-2 text-[0.9375rem] leading-relaxed text-secondary-foreground">{description}</p>}
+          </div>
+          <div>{children}</div>
+          {footer && <p className="border-t pt-5 text-sm text-muted-foreground">{footer}</p>}
+        </main>
+        {/* On wide screens without steps the showcase already carries this note. */}
+        <p className={cn('mx-auto max-w-[24rem] text-xs leading-relaxed text-muted-foreground lg:mx-0', !steps && 'lg:hidden')}>
+          FinPilot tính số dư cuối mỗi ngày từ số dư hiện có và các khoản bạn nhập. Không phải dự báo AI.
+        </p>
+      </div>
+      <aside
+        aria-label="FinPilot làm gì"
+        className="relative hidden overflow-hidden border-l bg-glass bg-[radial-gradient(ellipse_at_70%_20%,rgb(76_201_224/0.10),transparent_60%),linear-gradient(to_right,rgb(255_255_255/0.025)_1px,transparent_1px),linear-gradient(to_bottom,rgb(255_255_255/0.025)_1px,transparent_1px)] bg-[length:auto,40px_40px,40px_40px] lg:block"
+      >
+        <Showcase steps={steps} />
+      </aside>
     </div>
   )
 }
@@ -56,7 +92,7 @@ export function PasswordInput({ id, error, ...props }: Omit<ComponentProps<'inpu
           type={visible ? 'text' : 'password'}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `${id}-error` : undefined}
-          className="pr-10"
+          className="pr-11"
           {...props}
         />
         <button
@@ -64,7 +100,7 @@ export function PasswordInput({ id, error, ...props }: Omit<ComponentProps<'inpu
           onClick={() => setVisible((v) => !v)}
           aria-label={visible ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
           aria-pressed={visible}
-          className="absolute inset-y-0 right-0 grid w-10 place-items-center rounded-r-md text-muted-foreground hover:text-foreground"
+          className="absolute inset-y-0 right-0 grid w-11 place-items-center rounded-r-md text-muted-foreground hover:text-foreground"
         >
           {visible ? <EyeOff aria-hidden="true" className="size-4" /> : <Eye aria-hidden="true" className="size-4" />}
         </button>

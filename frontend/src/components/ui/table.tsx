@@ -18,21 +18,21 @@ function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
 }
 
 function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
-  return <tr data-slot="table-row" className={cn("border-b transition-colors hover:bg-muted/60", className)} {...props} />
+  return <tr data-slot="table-row" className={cn("border-b transition-colors hover:bg-white/[0.025]", className)} {...props} />
 }
 
 function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   return (
     <th
       data-slot="table-head"
-      className={cn("h-10 bg-muted/70 px-3 text-left align-middle text-xs font-medium whitespace-nowrap text-muted-foreground", className)}
+      className={cn("placard h-10 bg-glass px-3 text-left first:pl-4 last:pr-4 sm:first:pl-5 sm:last:pr-5 align-middle whitespace-nowrap text-muted-foreground", className)}
       {...props}
     />
   )
 }
 
 function TableCell({ className, ...props }: React.ComponentProps<"td">) {
-  return <td data-slot="table-cell" className={cn("px-3 py-2.5 align-middle", className)} {...props} />
+  return <td data-slot="table-cell" className={cn("px-3 py-2.5 align-middle first:pl-4 last:pr-4 sm:first:pl-5 sm:last:pr-5", className)} {...props} />
 }
 
 export { Table, TableHeader, TableBody, TableHead, TableRow, TableCell }

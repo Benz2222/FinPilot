@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactNode } from 'react'
-import { ArrowDownLeft, ArrowUpRight } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, CircleAlert } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { Direction } from '@/lib/types'
@@ -7,7 +7,8 @@ import type { Direction } from '@/lib/types'
 export function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null
   return (
-    <p id={id} className="mt-1.5 text-[0.8125rem] text-destructive">
+    <p id={id} className="mt-1.5 flex items-start gap-1.5 text-[0.8125rem] font-medium text-destructive">
+      <CircleAlert aria-hidden="true" className="mt-px size-3.5 shrink-0" />
       {message}
     </p>
   )
@@ -67,15 +68,15 @@ export function DirectionToggle({
   legend: ReactNode
 }) {
   const options: { value: Direction; label: string; icon: ReactNode; on: string }[] = [
-    { value: 'Out', label: 'Chi ra', icon: <ArrowUpRight aria-hidden="true" className="size-4" />, on: 'peer-checked:bg-card peer-checked:text-foreground peer-checked:shadow-sm peer-checked:ring-1 peer-checked:ring-border' },
-    { value: 'In', label: 'Thu về', icon: <ArrowDownLeft aria-hidden="true" className="size-4" />, on: 'peer-checked:bg-card peer-checked:text-ok peer-checked:shadow-sm peer-checked:ring-1 peer-checked:ring-border' },
+    { value: 'Out', label: 'Chi ra', icon: <ArrowUpRight aria-hidden="true" className="size-4" />, on: 'peer-checked:bg-secondary peer-checked:text-foreground peer-checked:ring-1 peer-checked:ring-input' },
+    { value: 'In', label: 'Thu về', icon: <ArrowDownLeft aria-hidden="true" className="size-4" />, on: 'peer-checked:bg-ok-soft peer-checked:text-ok peer-checked:ring-1 peer-checked:ring-ok-line' },
   ]
   return (
     <fieldset aria-describedby={error ? `${name}-error` : undefined}>
       <legend className="sr-only">{legend}</legend>
-      <div className="inline-flex rounded-lg bg-muted p-1">
+      <div className="grid grid-cols-2 rounded-lg border bg-glass p-1 sm:inline-grid">
         {options.map((o) => (
-          <label key={o.value} className="relative">
+          <label key={o.value} className="relative min-w-0">
             <input
               type="radio"
               name={name}
@@ -86,7 +87,7 @@ export function DirectionToggle({
               className="peer absolute inset-0 opacity-0"
             />
             <span
-              className={`flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-3 text-sm font-medium text-muted-foreground peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-ring ${o.on}`}
+              className={`flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-md px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-ring ${o.on}`}
             >
               {o.icon}
               {o.label}

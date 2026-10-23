@@ -1,5 +1,6 @@
 import { useId, useLayoutEffect, useReducer, useRef, useState } from 'react'
 import type { ClipboardEvent, ComponentProps, SyntheticEvent } from 'react'
+import { CircleAlert } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { CURRENCY_SYMBOL, MAX_MONEY_DIGITS, groupDigits } from '@/lib/money'
 import { cn } from '@/lib/utils'
@@ -119,17 +120,18 @@ export function MoneyInput({ value, onValueChange, error, className, id, onBlur,
           }}
           aria-invalid={invalid || undefined}
           aria-describedby={invalid ? messageId : undefined}
-          className={cn('pr-7 text-right tabular-nums', className)}
+          className={cn('num pr-8 text-right', className)}
         />
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-sm text-muted-foreground"
+          className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground"
         >
           {CURRENCY_SYMBOL}
         </span>
       </div>
       {invalid && (
-        <p id={messageId} className="mt-1 text-xs text-destructive">
+        <p id={messageId} className="mt-1.5 flex items-start gap-1.5 text-[0.8125rem] font-medium text-destructive">
+          <CircleAlert aria-hidden="true" className="mt-px size-3.5 shrink-0" />
           {message}
         </p>
       )}

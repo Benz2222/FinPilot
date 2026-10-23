@@ -15,7 +15,7 @@ const NAME_CHIPS = {
 } as const
 
 const chip =
-  'inline-flex h-7 items-center gap-1 rounded-full border bg-card px-2.5 text-[0.8125rem] font-medium text-secondary-foreground transition-colors hover:bg-muted aria-pressed:border-primary aria-pressed:bg-primary-soft aria-pressed:text-primary'
+  'inline-flex h-9 items-center gap-1.5 rounded-full border border-input/70 bg-glass px-3 text-[0.8125rem] font-medium text-secondary-foreground transition-colors hover:border-input hover:text-foreground aria-pressed:border-primary aria-pressed:bg-primary-soft aria-pressed:text-primary'
 
 /**
  * One obligation: direction, amount, what it is and when. Amount first, with a 000 key, name chips and date
@@ -42,7 +42,7 @@ export function ObligationForm({
   const [showErrors, setShowErrors] = useState(false)
   const errors = validateDraft(draft)
   if (!errors.date && minDate && isValidIsoDate(draft.date) && draft.date < minDate) {
-    errors.date = 'Ngày này đã nằm trong số dư chốt; chọn từ ngày bắt đầu dự báo'
+    errors.date = `Ngày này đã tính trong số dư hiện có. Chọn từ ${formatDayMonth(minDate)} trở đi`
   }
   const visible = showErrors ? errors : {}
   const id = (name: string) => `${uid}-${name}`
@@ -90,7 +90,7 @@ export function ObligationForm({
                 onValueChange={(amount) => setDraft({ ...draft, amount })}
                 error={visible.amount}
                 placeholder="0"
-                className="h-11 text-lg font-semibold"
+                className="h-12 text-lg font-semibold sm:h-12 sm:text-lg"
               />
             </div>
             <Button
@@ -99,7 +99,7 @@ export function ObligationForm({
               aria-label="Thêm ba số 0"
               disabled={!draft.amount || draft.amount.length + 3 > MAX_MONEY_DIGITS}
               onClick={() => setDraft({ ...draft, amount: `${draft.amount}000` })}
-              className="num h-11 px-3 font-semibold"
+              className="num h-12 px-3.5 font-semibold"
             >
               000
             </Button>
@@ -142,7 +142,7 @@ export function ObligationForm({
           <div role="group" aria-label="Chọn nhanh ngày" className="mt-2 flex flex-wrap gap-1.5">
             {shortcuts.map((s) => (
               <button key={s.label} type="button" aria-pressed={draft.date === s.date} className={chip} onClick={() => setDraft({ ...draft, date: s.date })}>
-                {s.label} <span className="num font-normal opacity-80">{formatDayMonth(s.date)}</span>
+                {s.label} <span className="num font-normal text-muted-foreground">{formatDayMonth(s.date)}</span>
               </button>
             ))}
           </div>
@@ -163,11 +163,11 @@ export function ObligationForm({
 
         <div className="flex gap-2 @xl:col-span-2 @xl:justify-end">
           {onCancel && (
-            <Button type="button" variant="outline" onClick={onCancel}>
+            <Button type="button" variant="outline" size="lg" onClick={onCancel}>
               Hủy
             </Button>
           )}
-          <Button type="submit" className="flex-1 @xl:flex-none">
+          <Button type="submit" size="lg" className="flex-1 @xl:flex-none">
             {submitLabel}
           </Button>
         </div>

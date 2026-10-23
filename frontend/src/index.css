@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/inter";
 @import "@fontsource/ibm-plex-sans/400.css";
 @import "@fontsource/ibm-plex-sans/500.css";
 @import "@fontsource/ibm-plex-sans/600.css";
@@ -10,11 +9,11 @@
 @import "@fontsource/ibm-plex-mono/600.css";
 
 @theme inline {
-    --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
-    --font-heading: var(--font-sans);
+    --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
     --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', monospace;
     --color-background: var(--background);
     --color-foreground: var(--foreground);
+    --color-glass: var(--glass);
     --color-card: var(--card);
     --color-card-foreground: var(--card-foreground);
     --color-popover: var(--popover);
@@ -26,13 +25,11 @@
     --color-secondary-foreground: var(--secondary-foreground);
     --color-muted: var(--muted);
     --color-muted-foreground: var(--muted-foreground);
-    --color-accent: var(--accent);
-    --color-accent-foreground: var(--accent-foreground);
     --color-destructive: var(--destructive);
     --color-border: var(--border);
     --color-input: var(--input);
+    --color-input-hover: var(--input-hover);
     --color-ring: var(--ring);
-    --color-balance: var(--balance);
     --color-shortage: var(--shortage);
     --color-shortage-soft: var(--shortage-soft);
     --color-shortage-line: var(--shortage-line);
@@ -49,58 +46,16 @@
     --radius-xl: calc(var(--radius) * 1.4);
 }
 
-:root,
-.theme-light {
-    /* Neutral slate surfaces, one blue accent, and semantic red / amber / green. All text pairings meet WCAG AA on white and on --background. */
-    --background: #f6f7f9;
-    --foreground: #101828;
-    --card: #ffffff;
-    --card-foreground: var(--foreground);
-    --popover: #ffffff;
-    --popover-foreground: var(--foreground);
-    --primary: #2952cc;
-    --primary-foreground: #ffffff;
-    --primary-soft: #eef2fd;
-    --secondary: #f2f4f7;
-    --secondary-foreground: #344054;
-    --muted: #f2f4f7;
-    --muted-foreground: #5b6474;
-    --accent: #f2f4f7;
-    --accent-foreground: var(--foreground);
-    --destructive: #b42318;
-    --border: #e4e7ec;
-    --input: #d0d5dd;
-    --ring: #2952cc;
-    --radius: 0.5rem;
-
-    /* Money below zero, things that need care, things that are fine. */
-    --balance: var(--primary);
-    --shortage: #b42318;
-    --shortage-soft: #fef3f2;
-    --shortage-line: #fda29b;
-    --caution: #93370d;
-    --caution-soft: #fffaeb;
-    --caution-line: #fedf89;
-    --caution-mark: #f79009;
-    --ok: #067647;
-    --ok-soft: #ecfdf3;
-    --ok-line: #abefc6;
-}
-
-.theme-light {
-    color-scheme: light;
-    font-family: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
-}
-
 /*
- * Cash-flow cockpit: a dark instrument panel. Surfaces step up in lightness, text and signal colours meet WCAG AA
- * on every surface; cyan is the instrument (brand) colour, green / amber / red are status only.
+ * Cash-flow cockpit: a dark instrument panel. Surfaces step up in lightness (background → glass → card → popover);
+ * cyan is the instrument (brand) colour; green / amber / red are status only. Every text pairing meets WCAG AA on
+ * every surface, and control edges (--input) reach 3:1 against the card and the input well.
  */
-.cockpit {
+:root {
     color-scheme: dark;
-    font-family: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
     --background: #090d12;
     --foreground: #e6ecf3;
+    --glass: #0c1218;
     --card: #10161d;
     --card-foreground: var(--foreground);
     --popover: #161e28;
@@ -112,12 +67,14 @@
     --secondary-foreground: #c2ccd8;
     --muted: #151c25;
     --muted-foreground: #8d9aab;
-    --accent: #18212b;
-    --accent-foreground: var(--foreground);
     --destructive: #ff6b6b;
     --border: #212b37;
-    --input: #2e3a49;
+    --input: #5b6c82;
+    --input-hover: #71839b;
     --ring: #4cc9e0;
+    --radius: 0.5rem;
+
+    /* Money below zero, things that need care, things that are fine. */
     --balance: var(--primary);
     --shortage: #ff6464;
     --shortage-soft: rgb(255 100 100 / 0.1);
@@ -129,15 +86,6 @@
     --ok: #40d692;
     --ok-soft: rgb(64 214 146 / 0.1);
     --ok-line: rgb(64 214 146 / 0.38);
-    /* Instrument glass: the faint inner panel behind readouts and the chart. */
-    --glass: #0c1218;
-    --mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', monospace;
-}
-
-/* The page behind the cockpit screen is dark too (scrollbars, overscroll). */
-:root:has(.cockpit-page) {
-    color-scheme: dark;
-    background-color: #090d12;
 }
 
 @layer base {
@@ -146,7 +94,6 @@
   }
   html {
     @apply font-sans;
-    font-feature-settings: 'cv11', 'ss01';
   }
   body {
     @apply min-h-svh bg-background text-foreground antialiased;
@@ -166,18 +113,13 @@
   .num {
     font-variant-numeric: tabular-nums lining-nums;
   }
-  /* In the cockpit every figure is a readout: monospaced. */
-  .cockpit .num {
-    font-family: var(--mono);
-    font-feature-settings: 'zero' 0;
-  }
-  /* Screens not yet redesigned keep their own type inside the dark frame. */
-  .theme-light .num {
-    font-family: inherit;
+  /* Every figure is a readout: monospaced. */
+  .num {
+    font-family: var(--font-mono);
   }
   /* Instrument placard: small, tracked, upper-case label. */
   .placard {
-    font-family: var(--mono);
+    font-family: var(--font-mono);
     font-size: 0.6875rem;
     font-weight: 500;
     letter-spacing: 0.08em;
@@ -187,14 +129,11 @@
 }
 
 /* Chart axes and in-chart labels read like instrument markings. */
-.cockpit .recharts-cartesian-axis-tick text,
-.cockpit .chart-placard {
-  font-family: var(--mono);
+.recharts-cartesian-axis-tick text,
+.chart-placard {
+  font-family: var(--font-mono);
 }
-.theme-light .recharts-cartesian-axis-tick text {
-  font-family: inherit;
-}
-.cockpit .chart-placard {
+.chart-placard {
   letter-spacing: 0.08em;
   font-weight: 500;
 }

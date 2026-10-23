@@ -61,7 +61,7 @@ function Delta({ value, base }: { value: string; base: string }) {
   if (isZero(d)) return <span className="text-xs text-muted-foreground">như hiện tại</span>
   const up = !isNegative(d)
   return (
-    <span className={`num text-xs font-medium ${up ? 'text-ok' : 'text-shortage'}`}>
+    <span className={`text-xs font-medium ${up ? 'text-ok' : 'text-shortage'}`}>
       {up ? '▲ ' : '▼ '}
       {formatMoneyWords(d.replace(/^-/, ''))} so với hiện tại
     </span>
@@ -77,8 +77,8 @@ interface Column {
 
 /** "Hiện tại" against every scenario, one column each, rows are what the owner decides on. States facts; ranks nothing. */
 function CompareTable({ columns, base, today }: { columns: Column[]; base: ScenarioOutcome | null; today: string }) {
-  const rowHead = 'sticky left-0 z-10 bg-card px-4 py-3 text-left align-top text-[0.8125rem] font-medium text-muted-foreground sm:px-5'
-  const money = 'num block font-semibold whitespace-nowrap'
+  const rowHead = 'sticky left-0 z-10 bg-card px-4 py-3.5 text-left align-top text-[0.8125rem] font-medium whitespace-nowrap text-muted-foreground sm:px-5'
+  const money = 'num block text-[0.9375rem] font-medium whitespace-nowrap'
   const rows: { label: string; render: (o: ScenarioOutcome, isBase: boolean) => ReactNode }[] = [
     {
       label: 'Kết quả',
@@ -132,10 +132,10 @@ function CompareTable({ columns, base, today }: { columns: Column[]; base: Scena
     <div role="region" aria-label="Bảng so sánh các kịch bản" tabIndex={0} className="overflow-x-auto focus-visible:-outline-offset-2">
       <table className="w-full border-collapse text-sm">
         <thead>
-          <tr className="border-y bg-muted/60">
-            <td className="sticky left-0 z-10 bg-muted px-4 sm:px-5" />
+          <tr className="border-y bg-glass">
+            <td className="sticky left-0 z-10 bg-glass px-4 sm:px-5" />
             {columns.map((c, i) => (
-              <th key={c.key} scope="col" className={`min-w-[9.5rem] px-4 py-2.5 text-left align-bottom font-medium ${i === 0 ? 'bg-primary-soft' : ''}`}>
+              <th key={c.key} scope="col" className={`min-w-[10rem] px-4 py-3 text-left align-bottom font-medium ${i === 0 ? 'bg-primary-soft' : ''}`}>
                 <span className="block break-words text-foreground">{c.name}</span>
                 {c.stale && (
                   <Badge variant="warning" className="mt-1">
@@ -153,7 +153,7 @@ function CompareTable({ columns, base, today }: { columns: Column[]; base: Scena
                 {r.label}
               </th>
               {columns.map((c, i) => (
-                <td key={c.key} className={`px-4 py-3 align-top ${i === 0 ? 'bg-primary-soft/50' : ''}`}>
+                <td key={c.key} className={`px-4 py-3.5 align-top ${i === 0 ? 'bg-primary-soft/50' : ''}`}>
                   {c.outcome ? r.render(c.outcome, i === 0) : <span className="text-muted-foreground">Đang tính…</span>}
                 </td>
               ))}
@@ -234,14 +234,17 @@ export function ScenariosScreen() {
             </a>
           }
         >
-          Cần số dư đã xác nhận và lịch thu–chi trước.
+          Cần số dư hiện có và lịch thu–chi trước.
         </EmptyState>
       </div>
     )
   }
 
+  // A new scenario starts as "Phương án N"; the first assumption names it ("Nhập ít hơn “Nhập hàng”") unless the owner typed a name.
+  const defaultName = `Phương án ${scenarios.length + 1}`
+
   function startNew() {
-    setDraft({ id: null, name: `Phương án ${scenarios.length + 1}`, adjustments: [] })
+    setDraft({ id: null, name: defaultName, adjustments: [] })
     setPreset(null)
     requestAnimationFrame(() => builderRef.current?.querySelector<HTMLElement>('input')?.focus())
   }
@@ -291,8 +294,9 @@ export function ScenariosScreen() {
         }
       />
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_23rem]">
-        <section aria-labelledby="board-title" className="grid min-w-0 gap-6">
+      {/* The table gets the full width; while a scenario is being built, the builder takes the right column beside it. */}
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_23rem] lg:grid-rows-[auto_1fr]">
+        <section aria-labelledby="board-title" className={draft ? 'min-w-0' : 'min-w-0 lg:col-span-2'}>
           <Card className="overflow-hidden">
             <CardHeader className="pb-4 sm:pb-4">
               <div>
@@ -309,9 +313,11 @@ export function ScenariosScreen() {
               ]}
             />
           </Card>
+        </section>
 
+        <section aria-labelledby="lines-title" className="min-w-0 lg:col-start-1">
           <div className="grid gap-3">
-            <h3 className="text-base font-semibold">Đường số dư và giả định</h3>
+            <h3 id="lines-title" className="text-base font-semibold">Đường số dư và giả định</h3>
             <ol className="grid gap-3">
               <li>
                 <Card className="grid gap-3 p-4 sm:p-5">
@@ -331,14 +337,14 @@ export function ScenariosScreen() {
                     <Card className="grid gap-3 p-4 sm:p-5">
                       <div className="flex items-start justify-between gap-2">
                         <h4 id={`scenario-${s.id}`} tabIndex={-1} className="flex min-w-0 items-center gap-2 font-semibold break-words outline-none">
-                          <span aria-hidden="true" className="grid size-6 shrink-0 place-items-center rounded-md bg-muted text-xs font-semibold text-muted-foreground">
+                          <span aria-hidden="true" className="num grid size-7 shrink-0 place-items-center rounded-md border border-primary/40 bg-primary-soft text-xs font-semibold text-primary">
                             {String.fromCharCode(65 + (i % 26))}
                           </span>
                           {s.name}
                         </h4>
                         <Menu>
                           <MenuTrigger asChild>
-                            <Button variant="ghost" size="icon-sm" className="-my-1" aria-label={`Thao tác với kịch bản “${s.name}”`}>
+                            <Button variant="ghost" size="icon" className="-my-1.5" aria-label={`Thao tác với kịch bản “${s.name}”`}>
                               <MoreHorizontal aria-hidden="true" />
                             </Button>
                           </MenuTrigger>
@@ -384,8 +390,8 @@ export function ScenariosScreen() {
 
                       <div className="grid gap-x-6 gap-y-3 border-t pt-3 text-sm sm:grid-cols-2">
                         <div>
-                          <p className="text-[0.8125rem] font-medium text-muted-foreground">Giả định</p>
-                          <ul className="mt-1 grid gap-1">
+                          <p className="placard text-muted-foreground">Giả định</p>
+                          <ul className="mt-2 grid gap-1">
                             {s.adjustments.map((a) => (
                               <li key={a.id} className={broken.includes(a) ? 'font-medium text-shortage' : ''}>
                                 {describeAdjustment(a, byId)}
@@ -394,8 +400,8 @@ export function ScenariosScreen() {
                           </ul>
                         </div>
                         <div>
-                          <p className="text-[0.8125rem] font-medium text-muted-foreground">Cần cân nhắc</p>
-                          <ul className="mt-1 grid gap-1 text-secondary-foreground">
+                          <p className="placard text-muted-foreground">Cần cân nhắc</p>
+                          <ul className="mt-2 grid gap-1 text-secondary-foreground">
                             {[...new Set(s.adjustments.map((a) => tradeOff(a, byId)))].map((t) => (
                               <li key={t}>{t}</li>
                             ))}
@@ -417,11 +423,11 @@ export function ScenariosScreen() {
           </div>
         </section>
 
-        <aside ref={builderRef} aria-labelledby="builder-title" className="lg:sticky lg:top-6">
+        <aside ref={builderRef} aria-labelledby="builder-title" className={`lg:sticky lg:top-6 lg:col-start-2 ${draft ? 'lg:row-span-2 lg:row-start-1' : ''}`}>
           {draft ? (
             <Card className="grid gap-4 p-4 sm:p-5">
               <div className="flex items-center justify-between gap-2">
-                <h2 id="builder-title" className="text-base font-semibold">
+                <h2 id="builder-title" className="text-lg font-semibold">
                   {draft.id ? 'Sửa kịch bản' : 'Kịch bản mới'}
                 </h2>
                 <Button variant="ghost" size="icon-sm" onClick={() => setDraft(null)} aria-label="Đóng, không lưu">
@@ -442,14 +448,14 @@ export function ScenariosScreen() {
                 ) : (
                   <ol className="mt-1.5 grid gap-1.5">
                     {draft.adjustments.map((a, i) => (
-                      <li key={a.id} className="flex items-start gap-2 rounded-md border bg-muted/50 px-2.5 py-2 text-sm">
+                      <li key={a.id} className="flex items-start gap-2 rounded-md border bg-glass px-3 py-2.5 text-sm">
                         <span className="num text-xs text-muted-foreground">{i + 1}.</span>
                         <span className="min-w-0 flex-1">{describeAdjustment(a, byId)}</span>
                         <button
                           type="button"
                           aria-label={`Bỏ giả định ${i + 1}`}
                           onClick={() => setDraft({ ...draft, adjustments: draft.adjustments.filter((x) => x.id !== a.id) })}
-                          className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                          className="-my-1 -mr-1 grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
                         >
                           <X aria-hidden="true" className="size-4" />
                         </button>
@@ -472,7 +478,10 @@ export function ScenariosScreen() {
                   }}
                   onAdd={(a) => {
                     setPrefill(null)
-                    setDraft({ ...draft, adjustments: [...draft.adjustments, a] })
+                    const label = a.kind === 'add' ? a.label : byId.get(a.targetId)?.label
+                    const named = !draft.id && draft.adjustments.length === 0 && draft.name === defaultName && label
+                    const name = named ? `${PRESETS.find((p) => p.id === preset)!.title} “${label}”` : draft.name
+                    setDraft({ ...draft, name, adjustments: [...draft.adjustments, a] })
                     setPreset(null)
                   }}
                 />
@@ -483,7 +492,7 @@ export function ScenariosScreen() {
                       <button
                         type="button"
                         onClick={() => setPreset(p.id)}
-                        className="grid h-full w-full content-start gap-0.5 rounded-lg border bg-card px-3 py-2.5 text-left transition-colors hover:border-primary/40 hover:bg-primary-soft/60"
+                        className="grid h-full min-h-16 w-full content-start gap-1 rounded-lg border border-input/60 bg-glass px-3 py-3 text-left transition-colors hover:border-primary hover:bg-primary-soft"
                       >
                         <span className="text-sm font-medium">{p.title}</span>
                         <span className="text-xs text-muted-foreground">{p.hint}</span>
@@ -494,8 +503,8 @@ export function ScenariosScreen() {
               )}
 
               {draft.adjustments.length > 0 && (
-                <div className="grid gap-2 rounded-lg border bg-muted/40 p-3" aria-live="polite">
-                  <p className="text-xs font-medium text-muted-foreground">Xem trước</p>
+                <div className="grid gap-2.5 rounded-lg border border-primary/30 bg-glass p-3.5" aria-live="polite">
+                  <p className="placard text-primary">Xem trước</p>
                   {preview.loading && <p className="text-sm text-muted-foreground">Đang tính…</p>}
                   {preview.error && <p className="text-sm font-medium text-shortage">{preview.error}</p>}
                   {preview.outcome && !preview.loading && (
@@ -531,14 +540,14 @@ export function ScenariosScreen() {
             </Card>
           ) : (
             <Card className="grid gap-3 p-4 sm:p-5">
-              <div aria-hidden="true" className="grid size-10 place-items-center rounded-lg bg-primary-soft text-primary">
+              <div aria-hidden="true" className="grid size-11 place-items-center rounded-md border border-primary/30 bg-primary-soft text-primary">
                 <Split className="size-5" />
               </div>
-              <h2 id="builder-title" className="text-base font-semibold">
+              <h2 id="builder-title" className="text-lg font-semibold">
                 Bàn thử
               </h2>
               <p className="text-sm text-muted-foreground">Mỗi kịch bản là vài giả định đặt lên dữ liệu thật. Lịch thu–chi không bị sửa.</p>
-              <Button variant="outline" onClick={startNew}>
+              <Button variant="outline" size="lg" onClick={startNew}>
                 Bắt đầu kịch bản mới <ArrowRight aria-hidden="true" />
               </Button>
             </Card>

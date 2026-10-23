@@ -10,7 +10,10 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  DefaultZIndexes,
+  ZIndexLayer,
   usePlotArea,
+  useXAxisScale,
   useYAxisScale,
 } from 'recharts'
 import { ArrowDownLeft, ArrowUpRight, TriangleAlert } from 'lucide-react'
@@ -27,7 +30,6 @@ interface Datum {
   index: number
 }
 
-const LINE_GRADIENT = 'fp-balance-line'
 const FILL_GRADIENT = 'fp-balance-fill'
 const WIDE_CHART = 520 // px: below this, label every 14 days instead of every 7
 
@@ -39,7 +41,7 @@ function niceStep(rough: number): number {
   return Math.max(1, nice * magnitude)
 }
 
-/** Gradients that flip from blue to red exactly where the axis crosses 0 (measured from the real y-scale). */
+/** A fill that flips from blue to red exactly where the axis crosses 0 (measured from the real y-scale). */
 function ZeroSplitGradients() {
   const plot = usePlotArea()
   const yScale = useYAxisScale()
@@ -50,10 +52,6 @@ function ZeroSplitGradients() {
 
   return (
     <defs>
-      <linearGradient id={LINE_GRADIENT} {...vertical}>
-        <stop offset={offset} stopColor="var(--balance)" />
-        <stop offset={offset} stopColor="var(--shortage)" />
-      </linearGradient>
       {/* Above zero the fill fades towards the zero line; below it the red deepens with the shortfall. */}
       <linearGradient id={FILL_GRADIENT} {...vertical}>
         <stop offset={0} stopColor="var(--balance)" stopOpacity={0.22} />
@@ -62,6 +60,37 @@ function ZeroSplitGradients() {
         <stop offset={1} stopColor="var(--shortage)" stopOpacity={0.4} />
       </linearGradient>
     </defs>
+  )
+}
+
+/**
+ * The line in red over the days that close below zero, and only those: a day that closes at exactly 0 is not short,
+ * so it stays blue (a colour split at the zero line would paint half of that stroke red).
+ */
+function ShortageTrace({ data }: { data: Datum[] }) {
+  const xScale = useXAxisScale()
+  const yScale = useYAxisScale()
+  if (!xScale || !yScale) return null
+  const zero = yScale(0)
+  let d = ''
+  data.forEach((p, i) => {
+    if (p.closing >= 0) return
+    const x = xScale(p.date)
+    const y = yScale(p.closing)
+    if (x === undefined || y === undefined || zero === undefined) return
+    d += i > 0 && data[i - 1].closing < 0 ? ` L${x} ${y}` : ` M${x} ${i > 0 ? zero : y} L${x} ${y}`
+    const next = data[i + 1]
+    const nextX = next ? xScale(next.date) : undefined
+    if (nextX === undefined) return
+    d += ` L${nextX} ${y}`
+    if (next.closing >= 0) d += ` L${nextX} ${zero}`
+  })
+  if (!d) return null
+  // Just above the area's own line; reference lines and dots stay on top.
+  return (
+    <ZIndexLayer zIndex={DefaultZIndexes.area + 1}>
+      <path d={d} fill="none" stroke="var(--shortage)" strokeWidth={2} strokeLinejoin="round" pointerEvents="none" />
+    </ZIndexLayer>
   )
 }
 
@@ -190,6 +219,8 @@ export function BalanceChart({ result, events }: BalanceChartProps) {
   const eventsById = useMemo(() => new Map(events.map((e) => [e.id, e])), [events])
   const riskDays = useMemo(() => data.filter((d) => d.day.hasIntradayTimingRisk), [data])
   const lowest = data.find((d) => d.date === result.lowestBalanceDate)
+  // The "THIẾU TỪ" label reads rightwards from its line, or leftwards when the line is in the last third of the period.
+  const shortageLabelEnd = result.firstShortageDate ? data.findIndex((d) => d.date === result.firstShortageDate) > data.length * 0.66 : false
 
   const ticks = useMemo(() => {
     const step = width >= WIDE_CHART ? 7 : 14
@@ -243,7 +274,7 @@ export function BalanceChart({ result, events }: BalanceChartProps) {
 
       <div ref={containerRef} className="h-72 w-full sm:h-[23rem]">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 12, right: 12, bottom: 0, left: 0 }}>
+          <AreaChart data={data} margin={{ top: result.firstShortageDate ? 26 : 12, right: 12, bottom: 0, left: 0 }}>
             <ZeroSplitGradients />
             {hasShortage && (
               <ReferenceArea
@@ -284,13 +315,19 @@ export function BalanceChart({ result, events }: BalanceChartProps) {
                 stroke="var(--shortage)"
                 strokeDasharray="4 4"
                 strokeWidth={1}
-                label={{
-                  value: `THIẾU TỪ ${formatDayMonth(result.firstShortageDate)}`,
-                  position: 'insideTopLeft',
-                  fill: 'var(--shortage)',
-                  fontSize: 10,
-                  className: 'chart-placard',
-                }}
+                label={(props: { viewBox?: { x?: number; y?: number } }) => (
+                  // Above the plot, in the top margin, so no part of the balance line can run through the text.
+                  <text
+                    x={(props.viewBox?.x ?? 0) + (shortageLabelEnd ? -4 : 4)}
+                    y={(props.viewBox?.y ?? 0) - 8}
+                    textAnchor={shortageLabelEnd ? 'end' : 'start'}
+                    fill="var(--shortage)"
+                    fontSize={10}
+                    className="chart-placard"
+                  >
+                    THIẾU TỪ {formatDayMonth(result.firstShortageDate!)}
+                  </text>
+                )}
               />
             )}
             <Tooltip
@@ -302,7 +339,7 @@ export function BalanceChart({ result, events }: BalanceChartProps) {
               dataKey="closing"
               type="stepAfter"
               baseValue={0}
-              stroke={`url(#${LINE_GRADIENT})`}
+              stroke="var(--balance)"
               strokeWidth={2}
               strokeLinejoin="round"
               fill={`url(#${FILL_GRADIENT})`}
@@ -310,6 +347,7 @@ export function BalanceChart({ result, events }: BalanceChartProps) {
               activeDot={ActiveDot}
               isAnimationActive={false}
             />
+            <ShortageTrace data={data} />
             {riskDays.map((d) => (
               <ReferenceDot key={d.date} x={d.date} y={d.closing} r={7} shape={RiskDiamond} ifOverflow="visible" />
             ))}

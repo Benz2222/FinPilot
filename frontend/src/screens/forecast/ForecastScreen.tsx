@@ -1,7 +1,7 @@
 import { ArrowRight, CalendarClock, Info, LineChart, TriangleAlert } from 'lucide-react'
 import { splitScenarioHref } from '@/app/routes'
 import { useShop } from '@/app/use-shop'
-import { EmptyState, PageHeader, Skeleton, Stat } from '@/components/page'
+import { EmptyState, PageHeader, Skeleton } from '@/components/page'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,7 +14,8 @@ import { CashTrail } from './CashTrail'
 import { DayTable } from './DayTable'
 import { ErrorAlert } from './ErrorAlert'
 import { EventList } from './EventList'
-import { DayStrip, DeltaGauge, DepthTrace, Led, Readout, ScaleGauge } from './Instruments'
+import { Led, Readout, ReadoutPanel } from '@/components/readout'
+import { DayStrip, DeltaGauge, DepthTrace, ScaleGauge } from './Instruments'
 import { INTRADAY_RISK_NOTE } from './copy'
 
 const STATS = ['Số dư thấp nhất', 'Ngày đầu thiếu tiền', 'Thiếu lớn nhất', 'Số dư ngày 56']
@@ -23,11 +24,11 @@ const STATS = ['Số dư thấp nhất', 'Ngày đầu thiếu tiền', 'Thiếu
 function Empty() {
   return (
     <div className="grid gap-4">
-      <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <ReadoutPanel className="grid-cols-2 lg:grid-cols-4">
         {STATS.map((label) => (
-          <Stat key={label} label={label} value={<span className="text-muted-foreground">—</span>} className="border-dashed shadow-none" />
+          <Readout key={label} label={label} signal="idle" value={<span className="text-muted-foreground">—</span>} sub="Chưa có số liệu" />
         ))}
-      </dl>
+      </ReadoutPanel>
       <EmptyState
         icon={<LineChart />}
         title="Chưa có dữ liệu để dự báo"
@@ -64,7 +65,7 @@ export function ForecastScreen() {
     <PageHeader
       eyebrow="Buồng lái dòng tiền · 56 ngày"
       title="Dự báo & cảnh báo"
-      description="Số dư cuối mỗi ngày trong 56 ngày, tính bằng phép cộng trừ từ số dư đã chốt và các khoản còn lại. Không phải dự báo AI."
+      description="Số dư cuối mỗi ngày trong 56 ngày, tính bằng phép cộng trừ từ số dư hiện có và các khoản còn lại. Không phải dự báo AI."
     />
   )
 
@@ -122,7 +123,7 @@ export function ForecastScreen() {
             story ? 'border-shortage-line' : 'border-ok-line',
           )}
         >
-          <div className="flex items-center gap-3 border-b bg-[var(--glass)] p-4 sm:flex-col sm:items-stretch sm:justify-center sm:border-r sm:border-b-0 sm:p-5">
+          <div className="flex items-center gap-3 border-b bg-glass p-4 sm:flex-col sm:items-stretch sm:justify-center sm:border-r sm:border-b-0 sm:p-5">
             <div
               className={cn(
                 'grid shrink-0 justify-items-center gap-1 rounded-md border px-3 py-2.5 text-center sm:gap-1.5 sm:py-5',
@@ -190,7 +191,7 @@ export function ForecastScreen() {
                 <AlertTitle>{result.unresolvedEvents.length} khoản quá hạn chưa được tính</AlertTitle>
                 <AlertDescription>
                   <p>
-                    Ngày dự kiến đã qua ngày chốt mà chưa xong. Không tính, cũng không coi là đã trả.{' '}
+                    Ngày hẹn đã qua ngày tính số dư hiện có mà chưa xong. Không tính, cũng không coi là đã trả.{' '}
                     <a href="#lich" className="font-medium text-primary underline underline-offset-4">
                       Đổi ngày ở Lịch thu–chi
                     </a>
@@ -223,7 +224,7 @@ export function ForecastScreen() {
         )}
 
         {/* Instrument cluster: four readouts in one panel, hairlines between them. */}
-        <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border lg:grid-cols-4">
+        <ReadoutPanel className="grid-cols-2 lg:grid-cols-4">
           <Readout
             label="Số dư thấp nhất"
             value={formatVnd(result.lowestBalance)}
@@ -253,7 +254,7 @@ export function ForecastScreen() {
             signal={isNegative(end) ? 'shortage' : 'ok'}
             gauge={<DeltaGauge ratio={toPlotNumber(delta) / deltaScale} />}
           />
-        </dl>
+        </ReadoutPanel>
 
         <Card className="overflow-hidden">
           <CardHeader className="pb-0 sm:pb-0">

@@ -12,7 +12,7 @@ import type { PresetId } from './describe'
 import { PRESETS } from './describe'
 
 const select =
-  'h-10 w-full min-w-0 rounded-md border border-input bg-card px-3 text-base text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20 aria-invalid:border-destructive sm:text-sm'
+  'h-11 w-full min-w-0 rounded-md border border-input bg-glass px-3 text-base text-foreground outline-none hover:border-input-hover focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/25 aria-invalid:border-destructive sm:h-10 sm:text-sm'
 
 /** Builds one adjustment of the chosen preset over the real schedule's open lines. */
 export function AdjustmentForm({
@@ -95,7 +95,7 @@ export function AdjustmentForm({
 
   if (preset !== 'add' && candidates.length === 0) {
     return (
-      <div className="rounded-lg border bg-muted/50 p-4 text-sm">
+      <div className="rounded-lg border bg-glass p-4 text-sm">
         <p>Lịch chưa có khoản {wantsIn ? 'thu' : preset === 'exclude' ? '' : 'chi'} nào còn mở để thử.</p>
         <Button variant="link" onClick={onCancel} className="mt-1 h-auto p-0">
           Đóng
@@ -105,8 +105,8 @@ export function AdjustmentForm({
   }
 
   return (
-    <form onSubmit={submit} noValidate className="grid gap-3 rounded-lg border border-primary/30 bg-card p-4 shadow-xs" aria-label={title}>
-      <p className="text-sm font-semibold">{title}</p>
+    <form onSubmit={submit} noValidate className="grid gap-3.5 rounded-lg border border-primary/40 bg-glass p-4" aria-label={title}>
+      <p className="placard text-primary">{title}</p>
       {initial && <p className="-mt-2 text-xs text-muted-foreground">Số gợi ý để bắt đầu; sửa tùy ý trước khi thêm.</p>}
       {preset === 'add' ? (
         <div className="grid gap-3 sm:grid-cols-2">
@@ -152,7 +152,7 @@ export function AdjustmentForm({
           </Field>
           <div className="min-w-0">
             <p className="mb-1.5 text-sm font-medium text-secondary-foreground">Đợt 2: phần còn lại</p>
-            <p className="num flex h-10 items-center justify-end rounded-md bg-muted px-3 font-semibold" aria-live="polite">
+            <p className="num flex h-11 items-center justify-end rounded-md border border-dashed border-input/70 px-3 font-medium sm:h-10" aria-live="polite">
               {rest ? formatVnd(rest) : '—'}
             </p>
           </div>
@@ -163,8 +163,8 @@ export function AdjustmentForm({
       )}
 
       <div className="flex flex-wrap gap-2">
-        <Button type="submit">Thêm giả định</Button>
-        <Button type="button" variant="ghost" onClick={onCancel}>
+        <Button type="submit" size="lg">Thêm giả định</Button>
+        <Button type="button" variant="ghost" size="lg" onClick={onCancel}>
           Hủy
         </Button>
       </div>

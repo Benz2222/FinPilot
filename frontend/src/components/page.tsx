@@ -11,33 +11,20 @@ export function PageHeader({ title, description, actions, eyebrow }: { title: st
         <h1 id="screen-title" tabIndex={-1} className="text-xl font-semibold tracking-tight outline-none sm:text-2xl">
           {title}
         </h1>
-        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+        {description && <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </header>
   )
 }
 
-/** A metric in a card: small label, large tabular figure, one line of context. */
-export function Stat({ label, value, sub, tone, className }: { label: string; value: ReactNode; sub?: ReactNode; tone?: 'danger' | 'ok'; className?: string }) {
-  return (
-    <div className={cn('min-w-0 rounded-xl border bg-card p-4 shadow-[0_1px_2px_rgb(16_24_40/0.05)]', tone === 'danger' && 'border-shortage-line', className)}>
-      <dt className="text-[0.8125rem] font-medium text-muted-foreground">{label}</dt>
-      <dd className={cn('num mt-1.5 text-xl font-semibold tracking-tight whitespace-nowrap sm:text-2xl', tone === 'danger' && 'text-shortage', tone === 'ok' && 'text-ok')}>
-        {value}
-      </dd>
-      {sub && <dd className="mt-1 text-[0.8125rem] text-muted-foreground">{sub}</dd>}
-    </div>
-  )
-}
-
 /** Something that is not there yet: what will appear, and the one action that makes it appear. */
 export function EmptyState({ icon, title, children, action, className }: { icon?: ReactNode; title: string; children?: ReactNode; action?: ReactNode; className?: string }) {
   return (
-    <div className={cn('grid justify-items-center gap-2 rounded-xl border border-dashed bg-card px-6 py-10 text-center', className)}>
-      {icon && <div className="mb-1 grid size-10 place-items-center rounded-full bg-muted text-muted-foreground [&_svg]:size-5">{icon}</div>}
+    <div className={cn('grid justify-items-center gap-2 rounded-lg border border-dashed border-input/70 bg-glass px-6 py-10 text-center', className)}>
+      {icon && <div className="mb-1 grid size-11 place-items-center rounded-md border border-primary/30 bg-primary-soft text-primary [&_svg]:size-5">{icon}</div>}
       <p className="font-semibold">{title}</p>
-      {children && <div className="max-w-md text-sm text-muted-foreground">{children}</div>}
+      {children && <div className="max-w-md text-sm leading-relaxed text-secondary-foreground">{children}</div>}
       {action && <div className="mt-2 flex flex-wrap justify-center gap-2">{action}</div>}
     </div>
   )

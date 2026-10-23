@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { FormEvent, ReactNode } from 'react'
+import type { FormEvent } from 'react'
 import { FileSpreadsheet, PencilLine, Sparkles } from 'lucide-react'
 import { useShop } from '@/app/use-shop'
 import { demoShop } from '@/lib/demo'
@@ -7,22 +7,10 @@ import { MoneyInput } from '@/components/MoneyInput'
 import { DateInput, Field, FieldLabel } from '@/components/fields'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { Readout, ReadoutPanel } from '@/components/readout'
 import { addDays, formatDate, isValidIsoDate } from '@/lib/date'
 import { formatVnd } from '@/lib/money'
 import type { Money } from '@/lib/types'
-
-function Figure({ label, value, sub, tone, action }: { label: string; value: string; sub: string; tone?: 'ok'; action?: ReactNode }) {
-  return (
-    <div className="min-w-0 rounded-xl border bg-card p-4 shadow-[0_1px_2px_rgb(16_24_40/0.05)]">
-      <div className="flex items-start justify-between gap-2">
-        <dt className="text-[0.8125rem] font-medium text-muted-foreground">{label}</dt>
-        {action}
-      </div>
-      <dd className={`num mt-1.5 text-xl font-semibold tracking-tight break-all sm:text-2xl ${tone === 'ok' ? 'text-ok' : ''}`}>{value}</dd>
-      <dd className="mt-1 text-[0.8125rem] text-muted-foreground">{sub}</dd>
-    </div>
-  )
-}
 
 /**
  * The confirmed closing balance next to what is still to come in and go out. Editing (or having no balance yet)
@@ -39,7 +27,7 @@ export function BalanceTicket({ totalIn, totalOut, countIn, countOut }: { totalI
   const open = editing || !balance
   const errors = {
     amount: /^\d+$/.test(amount) ? undefined : 'Nhập số dư (có thể là 0)',
-    cutoff: !isValidIsoDate(cutoff) ? 'Chọn ngày chốt' : cutoff > today ? 'Ngày chốt không được sau hôm nay' : undefined,
+    cutoff: !isValidIsoDate(cutoff) ? 'Chọn ngày' : cutoff > today ? 'Không chọn ngày sau hôm nay' : undefined,
   }
 
   function start() {
@@ -64,24 +52,25 @@ export function BalanceTicket({ totalIn, totalOut, countIn, countOut }: { totalI
         <h2 id="balance-title" className="sr-only">
           Số dư và các khoản sắp tới
         </h2>
-        <dl className="grid gap-3 sm:grid-cols-3">
-          <Figure
-            label="Số dư đã xác nhận"
+        <ReadoutPanel className="sm:grid-cols-3">
+          <Readout
+            label="Số dư hiện có"
+            signal="info"
             value={formatVnd(balance.amount)}
-            sub={`Cuối ngày ${formatDate(balance.cutoff)}`}
+            sub={`Tính đến hết ngày ${formatDate(balance.cutoff)}`}
             action={
-              <Button variant="ghost" size="sm" className="-mt-1.5 -mr-2" onClick={start}>
+              <Button variant="ghost" size="sm" className="-my-2 -mr-2 text-primary hover:text-primary" onClick={start}>
                 <PencilLine aria-hidden="true" />
                 Cập nhật số dư
               </Button>
             }
           />
-          <Figure label="Sắp thu" value={`+${formatVnd(totalIn)}`} sub={`${countIn} khoản còn mở`} tone="ok" />
-          <Figure label="Sắp chi" value={`−${formatVnd(totalOut)}`} sub={`${countOut} khoản còn mở`} />
-        </dl>
-        <p className="text-[0.8125rem] text-muted-foreground">
-          Số dư đã gồm mọi khoản thu/chi đến hết ngày {formatDate(balance.cutoff)}. Dự báo bắt đầu từ{' '}
-          <span className="num font-medium text-foreground">{formatDate(addDays(balance.cutoff, 1))}</span>; khoản nào còn mở trước ngày đó cần ngày mới.
+          <Readout label="Sắp thu" signal={countIn ? 'ok' : 'idle'} value={countIn ? `+${formatVnd(totalIn)}` : formatVnd(totalIn)} valueClassName={countIn ? 'text-ok' : undefined} sub={`${countIn} khoản chưa thu`} />
+          <Readout label="Sắp chi" signal="idle" value={countOut ? `−${formatVnd(totalOut)}` : formatVnd(totalOut)} sub={`${countOut} khoản chưa trả`} />
+        </ReadoutPanel>
+        <p className="text-[0.8125rem] leading-relaxed text-muted-foreground">
+          Số dư này đã gồm mọi khoản thu, chi đến hết ngày {formatDate(balance.cutoff)}. Dự báo tính từ{' '}
+          <span className="num font-medium text-foreground">{formatDate(addDays(balance.cutoff, 1))}</span>; khoản nào hẹn trước ngày đó mà chưa xong sẽ cần ngày mới.
         </p>
       </section>
     )
@@ -90,26 +79,27 @@ export function BalanceTicket({ totalIn, totalOut, countIn, countOut }: { totalI
   return (
     <Card>
       <section aria-labelledby="balance-form-title" className="p-4 sm:p-6">
-        <h2 id="balance-form-title" className="text-base font-semibold">
-          {balance ? 'Cập nhật số dư đã xác nhận' : 'Bắt đầu: nhập số dư hôm nay'}
+        <p className="placard text-primary">{balance ? 'Số dư' : 'Bước 1 / 2'}</p>
+        <h2 id="balance-form-title" className="mt-2 text-lg font-semibold">
+          {balance ? 'Cập nhật số dư hiện có' : 'Bắt đầu: nhập số dư hôm nay'}
         </h2>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
           Cộng tiền ngân hàng và tiền mặt <strong className="font-medium text-foreground">đã về</strong>, tính đến cuối ngày hôm qua (tức đầu ngày hôm nay).
           Không tính tiền sàn, COD còn đang chờ: những khoản đó nhập ở dưới như khoản sắp thu.
         </p>
-        <form onSubmit={submit} noValidate className="mt-5 grid gap-4 sm:grid-cols-[minmax(0,1fr)_12rem_auto] sm:items-start">
+        <form onSubmit={submit} noValidate className="mt-5 grid gap-4 sm:grid-cols-[minmax(0,1fr)_13rem_auto] sm:items-start">
           <div className="min-w-0">
-            <FieldLabel htmlFor="balance-amount">Số dư cuối ngày chốt</FieldLabel>
+            <FieldLabel htmlFor="balance-amount">Số dư hiện có (ngân hàng + tiền mặt)</FieldLabel>
             <MoneyInput
               id="balance-amount"
               value={amount}
               onValueChange={setAmount}
               error={showErrors ? errors.amount : undefined}
               placeholder="VD: 50.000.000"
-              className="h-11 text-base font-semibold"
+              className="h-12 text-lg font-semibold sm:h-12 sm:text-lg"
             />
           </div>
-          <Field id="balance-cutoff" label="Ngày chốt" error={showErrors ? errors.cutoff : undefined}>
+          <Field id="balance-cutoff" label="Tính đến hết ngày" error={showErrors ? errors.cutoff : undefined}>
             <DateInput
               id="balance-cutoff"
               value={cutoff}
@@ -117,7 +107,7 @@ export function BalanceTicket({ totalIn, totalOut, countIn, countOut }: { totalI
               onChange={(e) => setCutoff(e.target.value)}
               invalid={showErrors && Boolean(errors.cutoff)}
               describedBy="balance-cutoff-error"
-              className="h-11"
+              className="h-12 sm:h-12"
             />
           </Field>
           <div className="flex gap-2 sm:pt-7">
