@@ -3,10 +3,11 @@ import { LoaderCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 /** Screen title (focused on navigation), one-line purpose and the screen's main actions. */
-export function PageHeader({ title, description, actions }: { title: string; description?: ReactNode; actions?: ReactNode }) {
+export function PageHeader({ title, description, actions, eyebrow }: { title: string; description?: ReactNode; actions?: ReactNode; eyebrow?: ReactNode }) {
   return (
     <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
       <div className="min-w-0 max-w-3xl">
+        {eyebrow && <p className="placard mb-2 text-primary">{eyebrow}</p>}
         <h1 id="screen-title" tabIndex={-1} className="text-xl font-semibold tracking-tight outline-none sm:text-2xl">
           {title}
         </h1>

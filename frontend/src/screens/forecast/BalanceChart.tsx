@@ -3,6 +3,7 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
+  ReferenceArea,
   ReferenceDot,
   ReferenceLine,
   ResponsiveContainer,
@@ -53,9 +54,12 @@ function ZeroSplitGradients() {
         <stop offset={offset} stopColor="var(--balance)" />
         <stop offset={offset} stopColor="var(--shortage)" />
       </linearGradient>
+      {/* Above zero the fill fades towards the zero line; below it the red deepens with the shortfall. */}
       <linearGradient id={FILL_GRADIENT} {...vertical}>
-        <stop offset={offset} stopColor="var(--balance)" stopOpacity={0.08} />
-        <stop offset={offset} stopColor="var(--shortage)" stopOpacity={0.14} />
+        <stop offset={0} stopColor="var(--balance)" stopOpacity={0.22} />
+        <stop offset={offset} stopColor="var(--balance)" stopOpacity={0.02} />
+        <stop offset={offset} stopColor="var(--shortage)" stopOpacity={0.18} />
+        <stop offset={1} stopColor="var(--shortage)" stopOpacity={0.4} />
       </linearGradient>
     </defs>
   )
@@ -202,7 +206,8 @@ export function BalanceChart({ result, events }: BalanceChartProps) {
     const hi = Math.ceil(max / step) * step
     const ticks: number[] = []
     for (let v = lo; v <= hi; v += step) ticks.push(v)
-    return { domain: [lo, hi] as [number, number], yTicks: ticks, hasShortage: min < 0 }
+    // A little headroom above the top tick, so a flat top line never sits on the chart's edge.
+    return { domain: [lo, hi + step * 0.12] as [number, number], yTicks: ticks, hasShortage: min < 0 }
   }, [data])
 
   return (
@@ -213,7 +218,7 @@ export function BalanceChart({ result, events }: BalanceChartProps) {
         {formatDate(result.lowestBalanceDate)}. Xem bảng chi tiết từng ngày bên dưới để đọc đủ số liệu.
       </p>
 
-      <ul className="mb-4 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-muted-foreground">
+      <ul className="mb-3 flex flex-wrap gap-x-5 gap-y-1.5 px-2 text-xs text-muted-foreground sm:px-1">
         <LegendItem mark={<path d="M1 8h14" stroke="var(--balance)" strokeWidth="2" strokeLinecap="round" />}>
           Số dư cuối ngày
         </LegendItem>
@@ -236,11 +241,22 @@ export function BalanceChart({ result, events }: BalanceChartProps) {
         )}
       </ul>
 
-      <div ref={containerRef} className="h-72 w-full sm:h-80">
+      <div ref={containerRef} className="h-72 w-full sm:h-[23rem]">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 12, right: 12, bottom: 0, left: 0 }}>
             <ZeroSplitGradients />
-            <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 3" />
+            {hasShortage && (
+              <ReferenceArea
+                y1={domain[0]}
+                y2={0}
+                fill="var(--shortage)"
+                fillOpacity={0.06}
+                stroke="none"
+                ifOverflow="hidden"
+                label={{ value: 'VÙNG THIẾU TIỀN', position: 'insideBottomLeft', fill: 'var(--shortage)', fontSize: 10, className: 'chart-placard' }}
+              />
+            )}
+            <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="2 4" />
             <XAxis
               dataKey="date"
               ticks={ticks}
@@ -261,7 +277,22 @@ export function BalanceChart({ result, events }: BalanceChartProps) {
               axisLine={false}
               tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
             />
-            <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeWidth={1} />
+            <ReferenceLine y={0} stroke="var(--foreground)" strokeOpacity={0.55} strokeWidth={1} />
+            {result.firstShortageDate && (
+              <ReferenceLine
+                x={result.firstShortageDate}
+                stroke="var(--shortage)"
+                strokeDasharray="4 4"
+                strokeWidth={1}
+                label={{
+                  value: `THIẾU TỪ ${formatDayMonth(result.firstShortageDate)}`,
+                  position: 'insideTopLeft',
+                  fill: 'var(--shortage)',
+                  fontSize: 10,
+                  className: 'chart-placard',
+                }}
+              />
+            )}
             <Tooltip
               content={<ChartTooltip eventsById={eventsById} />}
               cursor={{ stroke: 'var(--foreground)', strokeOpacity: 0.25 }}
