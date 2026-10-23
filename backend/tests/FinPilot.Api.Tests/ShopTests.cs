@@ -241,13 +241,10 @@ public sealed class ShopTests(ShopFixture factory) : IClassFixture<ShopFixture>
     {
         using var client = await factory.Account();
         var email = (await client.GetFromJsonAsync<JsonObject>("/api/auth/me"))!["email"]!.GetValue<string>();
-        using (var scope = factory.Services.CreateScope())
-        {
-            var users = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
-            var user = (await users.FindByEmailAsync(email))!;
-            var token = await users.GenerateEmailConfirmationTokenAsync(user);
-            Assert.True((await users.ConfirmEmailAsync(user, token)).Succeeded);
-        }
+        // Confirm through the link in the registration mail, exactly as the user would click it.
+        var confirmation = Assert.Single(factory.Mail.Messages, x => x.Email == email && x.Body.Contains("/api/auth/confirmEmail"));
+        var confirmLink = new Uri(System.Text.RegularExpressions.Regex.Match(confirmation.Body, @"https?://\S+").Value);
+        (await client.GetAsync(confirmLink.PathAndQuery)).EnsureSuccessStatusCode();
         (await client.PostAsJsonAsync("/api/auth/forgotPassword", new { email })).EnsureSuccessStatusCode();
         var message = Assert.Single(factory.Mail.Messages, x => x.Email == email && x.Body.Contains("/reset-password?"));
         var link = new Uri(System.Text.RegularExpressions.Regex.Match(message.Body, @"https?://\S+").Value);
