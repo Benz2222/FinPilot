@@ -116,15 +116,53 @@ public sealed class ShopFixture : WebApplicationFactory<Program>, IAsyncLifetime
 public sealed class CapturingEmailDelivery : IEmailDelivery
 {
     public ConcurrentQueue<(string Email, string Body)> Messages { get; } = new();
-    public Task Send(string email, string subject, string body)
+    public Func<Task>? BeforeSend { get; set; }
+    public async Task Send(string email, string subject, string body, CancellationToken cancellationToken = default)
     {
+        if (BeforeSend is not null) await BeforeSend();
         Messages.Enqueue((email, body));
-        return Task.CompletedTask;
     }
 }
 
 public sealed class ShopTests(ShopFixture factory) : IClassFixture<ShopFixture>
 {
+    [Fact]
+    public async Task MailFailuresDoNotBreakAccountEndpointsOrSignIn()
+    {
+        using var client = factory.CreateClient();
+        await ShopFixture.Token(client);
+        var email = $"{Guid.NewGuid():N}@example.test";
+        var credentials = new { email, password = "Initial-Password1!" };
+        var stalled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var attempts = 0;
+        factory.Mail.BeforeSend = () => ++attempts == 2 ? stalled.Task :
+            Task.FromException(new System.Net.Mail.SmtpException("Provider rejected a sensitive reset link/code."));
+        try
+        {
+            (await client.PostAsJsonAsync("/api/auth/register", credentials).WaitAsync(TimeSpan.FromSeconds(10)))
+                .EnsureSuccessStatusCode();
+            (await client.PostAsJsonAsync("/api/auth/login", credentials)).EnsureSuccessStatusCode();
+            await ShopFixture.Token(client);
+            // The second send never completes, even when cancellation is requested.
+            (await client.PostAsJsonAsync("/api/auth/resendConfirmationEmail", new { email })
+                .WaitAsync(TimeSpan.FromSeconds(10))).EnsureSuccessStatusCode();
+            using (var scope = factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                (await db.Users.SingleAsync(user => user.Email == email)).EmailConfirmed = true;
+                await db.SaveChangesAsync();
+            }
+            (await client.PostAsJsonAsync("/api/auth/forgotPassword", new { email }).WaitAsync(TimeSpan.FromSeconds(10)))
+                .EnsureSuccessStatusCode();
+            Assert.Equal(3, attempts);
+        }
+        finally
+        {
+            factory.Mail.BeforeSend = null;
+            stalled.TrySetResult();
+        }
+    }
+
     [Fact]
     public async Task RowSecurityBlocksDataApiReadsWhileOwnerCanUseTheApp()
     {
