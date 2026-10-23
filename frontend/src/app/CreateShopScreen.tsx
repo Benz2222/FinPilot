@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { getSession, signOut, subscribeSession } from '@/lib/session'
 import { AuthLayout, FormAlert } from '@/screens/auth/AuthLayout'
+import { SPAM_HINT } from '@/screens/auth/messages'
 import { useShop } from './use-shop'
 
 /** Signed in, but the account has no shop yet: ask for its name, then open the app. */
@@ -58,7 +59,7 @@ export function CreateShopScreen({ email }: { email: string }) {
         <Alert variant="success" role="status" className="mb-5">
           <MailCheck aria-hidden="true" />
           <AlertDescription className="text-foreground">
-            Đã gửi email xác nhận tới <strong className="font-medium break-all">{email}</strong>. Hãy xác nhận để sau này có thể lấy lại mật khẩu.
+            Đã gửi email xác nhận tới <strong className="font-medium break-all">{email}</strong>. Hãy xác nhận để sau này có thể lấy lại mật khẩu. {SPAM_HINT}
           </AlertDescription>
         </Alert>
       )}

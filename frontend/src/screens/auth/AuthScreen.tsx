@@ -7,7 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { forgotPassword, register, signIn } from '@/lib/session'
 import { AuthLayout, FormAlert, PasswordInput } from './AuthLayout'
-import { EMAIL, PASSWORD_HINT, authProblems } from './messages'
+import { EMAIL, PASSWORD_HINT, SPAM_HINT, authProblems } from './messages'
 import type { AuthProblem } from './messages'
 
 type Errors = Partial<Record<'email' | 'password' | 'confirm', string>>
@@ -149,7 +149,7 @@ function RegisterForm({ onRegistered }: { onRegistered: (notice: string) => void
       await signIn(credentials, { justRegistered: true })
     } catch {
       // The account exists; only the automatic sign-in failed.
-      onRegistered(`Đã tạo tài khoản và gửi email xác nhận tới ${credentials.email}. Đăng nhập để tiếp tục.`)
+      onRegistered(`Đã tạo tài khoản và gửi email xác nhận tới ${credentials.email}. Đăng nhập để tiếp tục. ${SPAM_HINT}`)
     }
   }
 
@@ -232,7 +232,7 @@ function ForgotForm() {
           <AlertTitle>Đã gửi yêu cầu</AlertTitle>
           <AlertDescription>
             Nếu <strong className="font-medium break-all text-foreground">{sentTo}</strong> đã đăng ký và đã xác nhận, bạn sẽ nhận được liên kết đặt lại mật
-            khẩu trong vài phút. Kiểm tra cả hộp thư rác.
+            khẩu trong vài phút. {SPAM_HINT}
           </AlertDescription>
         </Alert>
       </AuthLayout>

@@ -77,10 +77,15 @@ public sealed class IdentityEmailSender(IEmailDelivery delivery, IConfiguration 
         }
     }
 
-    public Task SendConfirmationLinkAsync(IdentityUser user, string email, string confirmationLink) =>
-        Send("confirmation", email, "Xác nhận email FinPilot",
-            // Identity HTML-encodes the link (& → &amp;); this mail is plain text, so decode it back.
-            $"Mở liên kết dưới đây để xác nhận email cho tài khoản FinPilot của bạn.\n\n{WebUtility.HtmlDecode(confirmationLink)}\n\nNếu bạn không đăng ký tài khoản này, bạn có thể bỏ qua email này.");
+    public Task SendConfirmationLinkAsync(IdentityUser user, string email, string confirmationLink)
+    {
+        var baseUrl = configuration["App:PublicBaseUrl"]!.TrimEnd('/');
+        // Decode Identity's HTML escaping, then preserve its query for the web page to forward.
+        var query = new Uri(WebUtility.HtmlDecode(confirmationLink)).Query;
+        var link = $"{baseUrl}/confirm-email{query}";
+        return Send("confirmation", email, "Xác nhận email FinPilot",
+            $"Mở liên kết dưới đây để xác nhận email cho tài khoản FinPilot của bạn.\n\n{link}\n\nNếu bạn không đăng ký tài khoản này, bạn có thể bỏ qua email này.");
+    }
 
     public Task SendPasswordResetLinkAsync(IdentityUser user, string email, string resetLink) =>
         Send("password reset", email, "Đặt lại mật khẩu FinPilot",

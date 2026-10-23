@@ -46,7 +46,7 @@ export function authProblems(e: unknown): AuthProblem[] {
   if (e.status === 401) {
     const detail = e.problem?.detail?.toLowerCase() ?? ''
     if (detail.includes('locked')) return [{ field: null, message: 'Tài khoản tạm khóa vì nhập sai nhiều lần. Thử lại sau ít phút.' }]
-    if (detail.includes('notallowed')) return [{ field: null, message: 'Tài khoản chưa được phép đăng nhập. Kiểm tra email xác nhận rồi thử lại.' }]
+    if (detail.includes('notallowed')) return [{ field: null, message: 'Tài khoản chưa được phép đăng nhập. Kiểm tra email xác nhận (cả mục Thư rác) rồi thử lại.' }]
     return [{ field: null, message: 'Email hoặc mật khẩu không đúng.' }]
   }
   const errors = Object.entries(e.problem?.errors ?? {}).flatMap(([code, messages]) => messages.map((m) => fromCode(code, m)))
@@ -59,3 +59,6 @@ export const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 /** ASP.NET Identity's default password policy, which the backend keeps. */
 export const PASSWORD_HINT = 'Ít nhất 6 ký tự, gồm chữ hoa, chữ thường, chữ số và ký tự đặc biệt.'
+
+/** Our mail often lands in Spam; say so wherever we tell someone a mail is on its way. */
+export const SPAM_HINT = 'Không thấy thư? Xem trong mục Thư rác (Spam).'

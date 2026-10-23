@@ -4,6 +4,7 @@ import { AppShell } from '@/app/AppShell'
 import { readAuthView, readRoute } from '@/app/routes'
 import type { AuthView, Route } from '@/app/routes'
 import { AuthScreen } from '@/screens/auth/AuthScreen'
+import { ConfirmEmailScreen } from '@/screens/auth/ConfirmEmailScreen'
 import { ResetPasswordScreen } from '@/screens/auth/ResetPasswordScreen'
 import { Loading } from '@/components/page'
 import { Button } from '@/components/ui/button'
@@ -41,8 +42,9 @@ export default function App() {
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
 
-  // The reset link from the email works whether or not someone is signed in on this browser.
+  // The links from the emails work whether or not someone is signed in on this browser.
   if (window.location.pathname === '/reset-password') return <ResetPasswordScreen />
+  if (window.location.pathname === '/confirm-email') return <ConfirmEmailScreen session={session} />
 
   if (session.status === 'checking') {
     return failed ? (

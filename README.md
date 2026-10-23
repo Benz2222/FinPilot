@@ -62,7 +62,7 @@ Vite proxy chuyển `/api` đến `http://localhost:5281`, giúp frontend gọi 
 - `/api/auth/*`: các endpoint Identity. Login luôn dùng cookie, kể cả khi client không gửi `useCookies=true`; `/api/auth/refresh` bị vô hiệu hóa. Client không cần lưu bearer token. Cookie là HttpOnly, SameSite Strict, Secure ngoài Development; lỗi xác thực/phân quyền trả 401/403.
 - `GET /api/csrf`: lấy `{ token }` và cookie antiforgery; gửi token trong header `X-CSRF-TOKEN` cho mọi POST/PUT/DELETE/PATCH dưới `/api`. Chỉ preview forecast, preview import và template được miễn. Login, register, forgotPassword và resetPassword cũng cần token. Lấy lại token sau login/logout.
 - `GET /api/auth/me`: `{ email }` hoặc 401; `POST /api/auth/logout`: đăng xuất cookie, trả 204.
-- `POST /api/auth/forgotPassword` `{ email }` và `POST /api/auth/resetPassword` `{ email, resetCode, newPassword }`: Identity gửi link khôi phục cho email đã xác nhận. Đăng ký gửi link xác nhận email; forgotPassword không tiết lộ tài khoản có tồn tại hay chưa.
+- `POST /api/auth/forgotPassword` `{ email }` và `POST /api/auth/resetPassword` `{ email, resetCode, newPassword }`: Identity gửi link khôi phục cho email đã xác nhận. Đăng ký gửi link xác nhận email tới trang `/confirm-email` của frontend, trang này gọi `GET /api/auth/confirmEmail` với nguyên query; `POST /api/auth/resendConfirmationEmail` `{ email }` gửi lại. forgotPassword không tiết lộ tài khoản có tồn tại hay chưa.
 - `/api/shop`: tất cả yêu cầu đăng nhập. GET trả ShopData (version, balance, obligations với payments, scenarios, imports) cùng name/dataVersion; chưa tạo shop trả 404 ProblemDetails có type kết thúc `no-shop`. POST `{ name }` tạo shop duy nhất, trả 409 nếu đã có.
 - `PUT /api/shop/balance`, `PUT /api/shop/obligations/{id}`, `DELETE /api/shop/obligations/{id}`, `PUT /api/shop/scenarios/{id}`, `DELETE /api/shop/scenarios/{id}`: mỗi thao tác trả toàn bộ shop mới. ID nghĩa vụ/kịch bản là GUID client tạo. Thanh toán bị loại khỏi danh sách được VOID, lịch sử được giữ; tổng thanh toán không vượt số tiền nghĩa vụ. Kịch bản không sửa nghĩa vụ thực tế.
 - `POST /api/shop/imports` `{ fileSha256, fileName, obligations }`: commit nguyên tử; hash đã nhập trả 409 với `committedAt`. `PUT /api/shop/data` nhận ShopData để thay toàn bộ (demo/wipe); dữ liệu cũ được giữ theo quy tắc lịch sử và ghi audit.
@@ -102,9 +102,13 @@ Cấu hình qua user-secrets trong Development hoặc biến môi trường khi 
 | `Smtp:Password` | `Smtp__Password` | Mật khẩu SMTP |
 | `Smtp:From` | `Smtp__From` | Địa chỉ người gửi |
 
-Ví dụ: `dotnet user-secrets set "Smtp:Host" "smtp.example.com" --project backend/src/FinPilot.Api`; thiết lập các khóa còn lại theo nhà cung cấp. Link khôi phục là `{App:PublicBaseUrl}/reset-password?email=...&code=...`; frontend gửi code đó dưới tên resetCode đến Identity.
+Ví dụ: `dotnet user-secrets set "Smtp:Host" "smtp.example.com" --project backend/src/FinPilot.Api`; thiết lập các khóa còn lại theo nhà cung cấp. Link khôi phục là `{App:PublicBaseUrl}/reset-password?email=...&code=...`; frontend gửi code đó dưới tên resetCode đến Identity. Link xác nhận là `{App:PublicBaseUrl}/confirm-email?userId=...&code=...` (thêm `changedEmail` khi đổi email).
 
-Thiếu Host/From hợp lệ trong Development: API cảnh báo và ghi link vào log thay vì gửi email. Log phát triển có token nhạy cảm. Production từ chối khởi động nếu SMTP hoặc PublicBaseUrl chưa cấu hình; cần kiểm tra gửi email với nhà cung cấp trước pilot. Identity chỉ gửi reset cho email đã xác nhận.
+Thiếu Host/From hợp lệ trong Development: API cảnh báo và ghi link vào log thay vì gửi email. Log phát triển có token nhạy cảm. Production từ chối khởi động nếu SMTP hoặc PublicBaseUrl chưa cấu hình. Identity chỉ gửi reset cho email đã xác nhận.
+
+Mỗi lần gửi mail bị giới hạn 20 giây; gửi lỗi hoặc quá hạn thì ghi log (không ghi link/mã) và đăng ký, gửi lại xác nhận, quên mật khẩu vẫn trả kết quả bình thường. Mail lỗi không tự gửi lại; người dùng yêu cầu lại từ giao diện.
+
+Người gửi `@gmail.com` qua relay bên thứ ba không đạt SPF/DKIM cho gmail.com nên Gmail thường xếp vào Thư rác; giao diện nhắc người dùng xem mục này. Muốn vào hộp thư chính cần tên miền riêng đã cấu hình SPF/DKIM/DMARC tại nhà cung cấp gửi mail.
 
 ## Build và kiểm tra
 
@@ -143,7 +147,7 @@ Trong Render chọn **New → Blueprint**, kết nối repo và nhánh chứa `r
 | --- | --- |
 | `ConnectionStrings__Default` | Chuỗi Npgsql Session pooler ở bước 1 |
 | `App__PublicBaseUrl` | `https://<ten-project>.vercel.app` dự kiến; cập nhật URL thật sau bước 3, không có dấu `/` cuối |
-| `Smtp__Host`, `Smtp__Port`, `Smtp__UseStartTls` | SMTP thật; thường cổng `587`, STARTTLS `true` |
+| `Smtp__Host`, `Smtp__Port`, `Smtp__UseStartTls` | SMTP thật, STARTTLS `true`. Render Free chặn kết nối ra cổng 25/465/587 ([changelog](https://render.com/changelog/free-web-services-will-no-longer-allow-outbound-traffic-to-smtp-ports)), nên dùng relay có cổng `2525`; hiện là Mailjet `in-v3.mailjet.com:2525`, Username/Password là API key/Secret key |
 | `Smtp__Username`, `Smtp__Password`, `Smtp__From` | Tài khoản, mật khẩu và địa chỉ gửi đã được nhà cung cấp SMTP cho phép |
 
 `ASPNETCORE_ENVIRONMENT=Production` đã có trong blueprint. Lưu hostname Render, ví dụ `finpilot-api-xxxx.onrender.com`. Không bật tự chạy migration lúc khởi động; hoàn thành bước 4 trước khi sử dụng API.
@@ -177,7 +181,9 @@ Migration tạo cả `public.DataProtectionKeys`: giữ nguyên bảng này và 
 
 Trong Supabase mở **Project Settings → Data API → Enable Data API**, tắt và lưu vì ứng dụng không dùng PostgREST. Không cung cấp anon/service-role key cho frontend.
 
-Mở `https://<vercel-host>/api/health`, đăng ký tài khoản, bấm link xác nhận email, đăng nhập, tạo shop và thử khôi phục mật khẩu. Identity tạo link xác nhận bằng `LinkGenerator.GetUriByName(HttpContext, ...)`: scheme/host lấy từ request sau `UseForwardedHeaders`, không lấy từ `App__PublicBaseUrl`. [Vercel external rewrites](https://vercel.com/docs/rewrites) gửi `X-Forwarded-Host` là domain người dùng truy cập và `X-Forwarded-Proto=https`; API xử lý cả hai trước HTTPS redirection. Kiểm tra mail thực tế qua cả Vercel và Render: nếu lớp proxy thay host, link xác nhận có thể trỏ Render và vẫn xác nhận được qua GET `/api/auth/confirmEmail`. Link đặt lại mật khẩu luôn trỏ frontend theo `App__PublicBaseUrl`.
+Mở `https://<vercel-host>/api/health`, đăng ký tài khoản, bấm link xác nhận email, đăng nhập, tạo shop và thử khôi phục mật khẩu. Cả link xác nhận và link đặt lại mật khẩu đều trỏ frontend theo `App__PublicBaseUrl`. [Vercel external rewrites](https://vercel.com/docs/rewrites) gửi `X-Forwarded-Host` và `X-Forwarded-Proto=https`; API xử lý cả hai trước HTTPS redirection, nên cookie có cờ Secure.
+
+Production hiện tại: frontend `https://finpilot-ruby.vercel.app`, API Render `finpilot-api` (health check `/api/health`), Supabase vùng Singapore. Render Free ngủ sau 15 phút không có request; request đầu tiên sau đó mất khoảng một phút.
 
 ### 5. Sao lưu và thử khôi phục
 

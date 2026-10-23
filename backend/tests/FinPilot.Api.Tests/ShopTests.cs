@@ -248,7 +248,7 @@ public sealed class ShopTests(ShopFixture factory) : IClassFixture<ShopFixture>
         var confirmation = Assert.Single(factory.Mail.Messages, x => x.Email == email);
         var link = new Uri(System.Text.RegularExpressions.Regex.Match(confirmation.Body, @"https?://\S+").Value);
         Assert.Equal("https://finpilot.test", link.GetLeftPart(UriPartial.Authority));
-        (await client.GetAsync(link.PathAndQuery)).EnsureSuccessStatusCode();
+        (await client.GetAsync($"/api/auth/confirmEmail{link.Query}")).EnsureSuccessStatusCode();
 
         client.DefaultRequestHeaders.Remove("X-Forwarded-Host");
         client.DefaultRequestHeaders.Add("X-Forwarded-Host", "attacker.example.test");
@@ -256,7 +256,7 @@ public sealed class ShopTests(ShopFixture factory) : IClassFixture<ShopFixture>
         (await client.PostAsJsonAsync("/api/auth/register", new { email = otherEmail, password = "Initial-Password1!" })).EnsureSuccessStatusCode();
         var otherConfirmation = Assert.Single(factory.Mail.Messages, x => x.Email == otherEmail);
         var otherLink = new Uri(System.Text.RegularExpressions.Regex.Match(otherConfirmation.Body, @"https?://\S+").Value);
-        Assert.Equal("render.internal", otherLink.Host);
+        Assert.Equal("finpilot.test", otherLink.Host);
         Assert.DoesNotContain("attacker.example.test", otherConfirmation.Body);
     }
 
@@ -397,10 +397,11 @@ public sealed class ShopTests(ShopFixture factory) : IClassFixture<ShopFixture>
     {
         using var client = await factory.Account();
         var email = (await client.GetFromJsonAsync<JsonObject>("/api/auth/me"))!["email"]!.GetValue<string>();
-        // Confirm through the link in the registration mail, exactly as the user would click it.
-        var confirmation = Assert.Single(factory.Mail.Messages, x => x.Email == email && x.Body.Contains("/api/auth/confirmEmail"));
+        // The registration link opens the web page, which forwards its query to Identity.
+        var confirmation = Assert.Single(factory.Mail.Messages, x => x.Email == email);
         var confirmLink = new Uri(System.Text.RegularExpressions.Regex.Match(confirmation.Body, @"https?://\S+").Value);
-        (await client.GetAsync(confirmLink.PathAndQuery)).EnsureSuccessStatusCode();
+        Assert.Equal("https://finpilot.test/confirm-email", confirmLink.GetLeftPart(UriPartial.Path));
+        (await client.GetAsync($"/api/auth/confirmEmail{confirmLink.Query}")).EnsureSuccessStatusCode();
         (await client.PostAsJsonAsync("/api/auth/forgotPassword", new { email })).EnsureSuccessStatusCode();
         var message = Assert.Single(factory.Mail.Messages, x => x.Email == email && x.Body.Contains("/reset-password?"));
         var link = new Uri(System.Text.RegularExpressions.Regex.Match(message.Body, @"https?://\S+").Value);

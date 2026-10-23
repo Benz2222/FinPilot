@@ -74,3 +74,13 @@ export async function forgotPassword(email: string): Promise<void> {
 export async function resetPassword(email: string, resetCode: string, newPassword: string): Promise<void> {
   await request('POST', '/api/auth/resetPassword', { json: { email, resetCode, newPassword }, authFailureIsExpected: true })
 }
+
+/** The link from the confirmation mail: passes its query string (`userId`, `code`, sometimes `changedEmail`) on as is. */
+export async function confirmEmail(query: string): Promise<void> {
+  await request('GET', `/api/auth/confirmEmail${query}`, { authFailureIsExpected: true })
+}
+
+/** Sends a new confirmation link. The API answers the same whether or not the address has an account. */
+export async function resendConfirmationEmail(email: string): Promise<void> {
+  await request('POST', '/api/auth/resendConfirmationEmail', { json: { email }, authFailureIsExpected: true })
+}
