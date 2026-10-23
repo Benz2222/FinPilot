@@ -6,6 +6,8 @@ using FinPilot.Api.Import;
 using FinPilot.Api.Auth;
 using FinPilot.Api.Shops;
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -47,6 +49,17 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
+builder.Services.AddDataProtection()
+    .SetApplicationName("FinPilot")
+    .PersistKeysToDbContext<AppDbContext>();
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
+    // Render/Vercel do not have fixed proxy IPs. Trust the nearest proxy's sanitized headers.
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+    options.AllowedHosts = [publicUri.Host];
+});
 builder.Services.AddAuthorization();
 builder.Services.AddIdentityApiEndpoints<IdentityUser>()
     .AddEntityFrameworkStores<AppDbContext>();
@@ -77,6 +90,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 });
 
 var app = builder.Build();
+app.UseForwardedHeaders();
 if (!smtp.IsConfigured && app.Environment.IsDevelopment())
     app.Logger.LogWarning("Smtp is not configured. Development reset links will be logged; do not use this mode in Production.");
 

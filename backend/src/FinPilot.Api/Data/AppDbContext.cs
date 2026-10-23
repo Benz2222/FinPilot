@@ -1,4 +1,5 @@
 using FinPilot.Api.Domain;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -9,9 +10,11 @@ namespace FinPilot.Api.Data;
 /// EF migrations are the schema owner (database/reference/*.sql is the design baseline only;
 /// never apply both). Identity stays in "public" with text keys; business tables live in "finpilot".
 /// </summary>
-public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbContext<IdentityUser>(options)
+public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbContext<IdentityUser>(options), IDataProtectionKeyContext
 {
     public const string BusinessSchema = "finpilot";
+
+    public DbSet<DataProtectionKey> DataProtectionKeys { get; set; } = null!;
 
     public DbSet<Shop> Shops => Set<Shop>();
     public DbSet<BalanceSnapshot> BalanceSnapshots => Set<BalanceSnapshot>();

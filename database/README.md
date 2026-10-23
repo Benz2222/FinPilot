@@ -28,7 +28,7 @@ Khóa ngoại tổ hợp bảo vệ snapshot hiện tại, nguồn import và li
 - status dùng open/paid/cancelled theo API; paid bắt buộc có tổng thanh toán bằng amount. removed_at tách việc xóa khỏi việc hủy kế hoạch. Xóa nghĩa vụ hoặc wipe VOID các thanh toán bị loại khỏi dữ liệu hiện tại, vẫn giữ bản ghi cũ.
 - payment_id là ID client, id là ID bản ghi ledger. Sửa thanh toán VOID bản ghi cũ và thêm bản ghi mới với cùng payment_id; UNIQUE có điều kiện chỉ áp dụng cho bản ghi đang hoạt động. Không cho chuyển payment_id sang nghĩa vụ/shop khác.
 - Snapshot chỉ thêm và dùng con trỏ hiện tại; chưa có revision/supersedes, lý do hoặc xác nhận ack_snapshot_id. PUT balance xác nhận lại số dư cuối ngày; API hiện cho sửa cutoff và thanh toán trước cutoff theo hợp đồng ShopData. Không tự suy ra số dư bằng cách cộng lại thanh toán đã nằm trong snapshot.
-- Chưa có category/counterparty/external reference, parent scenario, purge policy, phân quyền DB runtime riêng hay RLS. Triển khai cần cấp role tối thiểu riêng cho runtime và migration; API vẫn chịu trách nhiệm cách ly người dùng.
+- Chưa có category/counterparty/external reference, parent scenario, purge policy hay phân quyền DB runtime riêng. Cấu hình RLS và role chủ bảng khi triển khai nằm trong mục **Triển khai** của [README chính](../README.md#triển-khai); API vẫn chịu trách nhiệm cách ly người dùng.
 
 ## Quản lý schema
 

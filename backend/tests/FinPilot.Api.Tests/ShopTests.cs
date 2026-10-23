@@ -5,6 +5,8 @@ using System.Text.Json.Nodes;
 using FinPilot.Api.Data;
 using FinPilot.Api.Auth;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
+using Microsoft.AspNetCore.DataProtection.Repositories;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -12,6 +14,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 using Testcontainers.PostgreSql;
 
@@ -22,6 +25,7 @@ public sealed class ShopFixture : WebApplicationFactory<Program>, IAsyncLifetime
     private PostgreSqlContainer? postgres;
     private string connection = "";
     private string? adminConnection;
+    private string ownerRole = "";
     public CapturingEmailDelivery Mail { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder) => builder
@@ -31,8 +35,20 @@ public sealed class ShopFixture : WebApplicationFactory<Program>, IAsyncLifetime
         .ConfigureTestServices(services =>
         {
             services.AddSingleton<IEmailDelivery>(Mail);
-            services.AddDataProtection().UseEphemeralDataProtectionProvider();
         });
+
+    public WebApplicationFactory<Program> AnotherInstance(string fallbackKeyDirectory) =>
+        new WebApplicationFactory<Program>().WithWebHostBuilder(builder => builder
+            .UseEnvironment("Development")
+            .UseSetting("ConnectionStrings:Default", connection)
+            .UseSetting("App:PublicBaseUrl", "https://finpilot.test")
+            .ConfigureTestServices(services =>
+            {
+                services.AddSingleton<IEmailDelivery>(Mail);
+                // Separate disks model disposable containers. A configured DB repository takes precedence.
+                services.PostConfigure<KeyManagementOptions>(options => options.XmlRepository ??=
+                    new FileSystemXmlRepository(new DirectoryInfo(fallbackKeyDirectory), NullLoggerFactory.Instance));
+            }));
 
     public async Task InitializeAsync()
     {
@@ -41,18 +57,21 @@ public sealed class ShopFixture : WebApplicationFactory<Program>, IAsyncLifetime
         {
             postgres = new PostgreSqlBuilder("postgres:17-alpine").Build();
             await postgres.StartAsync();
-            connection = postgres.GetConnectionString();
+            supplied = postgres.GetConnectionString();
         }
-        else
+        adminConnection = supplied;
+        ownerRole = $"finpilot_owner_{Guid.NewGuid():N}";
+        var isolated = new NpgsqlConnectionStringBuilder(supplied)
         {
-            adminConnection = supplied;
-            var isolated = new NpgsqlConnectionStringBuilder(supplied) { Database = $"finpilot_test_{Guid.NewGuid():N}" };
-            await using var admin = new NpgsqlConnection(adminConnection);
-            await admin.OpenAsync();
-            await using var create = new NpgsqlCommand($"CREATE DATABASE {isolated.Database}", admin);
-            await create.ExecuteNonQueryAsync();
-            connection = isolated.ConnectionString;
-        }
+            Database = $"finpilot_test_{Guid.NewGuid():N}", Options = $"-c role={ownerRole}"
+        };
+        await using var admin = new NpgsqlConnection(adminConnection);
+        await admin.OpenAsync();
+        await using var role = new NpgsqlCommand($"CREATE ROLE {ownerRole} NOLOGIN NOSUPERUSER NOBYPASSRLS", admin);
+        await role.ExecuteNonQueryAsync();
+        await using var create = new NpgsqlCommand($"CREATE DATABASE {isolated.Database} OWNER {ownerRole}", admin);
+        await create.ExecuteNonQueryAsync();
+        connection = isolated.ConnectionString;
         using var scope = Services.CreateScope();
         await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
     }
@@ -60,7 +79,6 @@ public sealed class ShopFixture : WebApplicationFactory<Program>, IAsyncLifetime
     async Task IAsyncLifetime.DisposeAsync()
     {
         await base.DisposeAsync();
-        if (postgres is not null) await postgres.DisposeAsync();
         if (adminConnection is not null && connection.Length > 0)
         {
             NpgsqlConnection.ClearAllPools();
@@ -69,7 +87,10 @@ public sealed class ShopFixture : WebApplicationFactory<Program>, IAsyncLifetime
             var database = new NpgsqlConnectionStringBuilder(connection).Database;
             await using var drop = new NpgsqlCommand($"DROP DATABASE {database} WITH (FORCE)", admin);
             await drop.ExecuteNonQueryAsync();
+            await using var dropRole = new NpgsqlCommand($"DROP ROLE {ownerRole}", admin);
+            await dropRole.ExecuteNonQueryAsync();
         }
+        if (postgres is not null) await postgres.DisposeAsync();
     }
 
     public async Task<HttpClient> Account()
@@ -104,6 +125,103 @@ public sealed class CapturingEmailDelivery : IEmailDelivery
 
 public sealed class ShopTests(ShopFixture factory) : IClassFixture<ShopFixture>
 {
+    [Fact]
+    public async Task RowSecurityBlocksDataApiReadsWhileOwnerCanUseTheApp()
+    {
+        using var client = await factory.Account();
+        var obligation = Obligation();
+        await Put(client, $"/api/shop/obligations/{obligation["id"]}", obligation);
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.True(await db.Users.AnyAsync());
+        Assert.False(await db.Database.SqlQuery<bool>($"SELECT rolsuper OR rolbypassrls AS \"Value\" FROM pg_roles WHERE rolname = current_user").SingleAsync());
+        Assert.Equal(0, await db.Database.SqlQuery<int>($"""
+            SELECT count(*)::int AS "Value" FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname IN ('public', 'finpilot') AND c.relkind = 'r'
+              AND (NOT c.relrowsecurity OR c.relforcerowsecurity OR EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid = c.oid))
+            """).SingleAsync());
+        // The built-in reader has SELECT on all tables, but neither ownership nor BYPASSRLS.
+        await using var reader = new NpgsqlConnection(new NpgsqlConnectionStringBuilder(db.Database.GetConnectionString())
+            { Options = "-c role=pg_read_all_data" }.ConnectionString);
+        await reader.OpenAsync();
+        await using var read = new NpgsqlCommand("""
+            SELECT (SELECT count(*) FROM public."AspNetUsers") +
+                   (SELECT count(*) FROM public."DataProtectionKeys") +
+                   (SELECT count(*) FROM finpilot.shops) +
+                   (SELECT count(*) FROM finpilot.obligation_balances)
+            """, reader);
+        Assert.Equal(0L, (long)(await read.ExecuteScalarAsync())!);
+    }
+
+    [Fact]
+    public async Task AuthenticationAndCsrfSurviveRestartWithoutSharedDisk()
+    {
+        var keyDirectory = Path.Combine(Path.GetTempPath(), $"finpilot_keys_{Guid.NewGuid():N}");
+        try
+        {
+            string cookies;
+            string token;
+            using (var first = factory.AnotherInstance(Path.Combine(keyDirectory, "first")))
+            using (var client = first.CreateClient(new() { BaseAddress = new Uri("https://finpilot.test"), HandleCookies = false }))
+            {
+                var csrf = await client.GetAsync("/api/csrf");
+                cookies = string.Join("; ", csrf.Headers.GetValues("Set-Cookie").Select(c => c.Split(';')[0]));
+                client.DefaultRequestHeaders.Add("Cookie", cookies);
+                token = (await csrf.Content.ReadFromJsonAsync<JsonObject>())!["token"]!.GetValue<string>();
+                client.DefaultRequestHeaders.Add("X-CSRF-TOKEN", token);
+                var credentials = new { email = $"{Guid.NewGuid():N}@example.test", password = "Initial-Password1!" };
+                (await client.PostAsJsonAsync("/api/auth/register", credentials)).EnsureSuccessStatusCode();
+                var login = await client.PostAsJsonAsync("/api/auth/login", credentials);
+                login.EnsureSuccessStatusCode();
+                cookies += "; " + string.Join("; ", login.Headers.GetValues("Set-Cookie").Select(c => c.Split(';')[0]));
+                client.DefaultRequestHeaders.Remove("Cookie");
+                client.DefaultRequestHeaders.Add("Cookie", cookies);
+                token = (await client.GetFromJsonAsync<JsonObject>("/api/csrf"))!["token"]!.GetValue<string>();
+            }
+            using var second = factory.AnotherInstance(Path.Combine(keyDirectory, "second"));
+            using var restarted = second.CreateClient(new() { BaseAddress = new Uri("https://finpilot.test"), HandleCookies = false });
+            restarted.DefaultRequestHeaders.Add("Cookie", cookies);
+            restarted.DefaultRequestHeaders.Add("X-CSRF-TOKEN", token);
+            (await restarted.GetAsync("/api/auth/me")).EnsureSuccessStatusCode();
+            (await restarted.PostAsJsonAsync("/api/shop", new { name = "Survives deploy" })).EnsureSuccessStatusCode();
+        }
+        finally
+        {
+            if (Directory.Exists(keyDirectory)) Directory.Delete(keyDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ForwardedHttpsAndHostProduceSecureCookiesAndPublicConfirmationLink()
+    {
+        using var client = factory.CreateClient(new() { BaseAddress = new Uri("http://render.internal"), AllowAutoRedirect = false, HandleCookies = false });
+        client.DefaultRequestHeaders.Add("X-Forwarded-Proto", "https");
+        client.DefaultRequestHeaders.Add("X-Forwarded-Host", "finpilot.test");
+        client.DefaultRequestHeaders.Add("X-Forwarded-For", "203.0.113.10");
+        var csrf = await client.GetAsync("/api/csrf");
+        csrf.EnsureSuccessStatusCode();
+        Assert.Contains(csrf.Headers.GetValues("Set-Cookie"), c => c.Contains("; secure", StringComparison.OrdinalIgnoreCase));
+        // The browser sent this over HTTPS to Vercel; the final internal hop is HTTP.
+        client.DefaultRequestHeaders.Add("Cookie", string.Join("; ", csrf.Headers.GetValues("Set-Cookie").Select(c => c.Split(';')[0])));
+        var token = (await csrf.Content.ReadFromJsonAsync<JsonObject>())!["token"]!.GetValue<string>();
+        client.DefaultRequestHeaders.Add("X-CSRF-TOKEN", token);
+        var email = $"{Guid.NewGuid():N}@example.test";
+        (await client.PostAsJsonAsync("/api/auth/register", new { email, password = "Initial-Password1!" })).EnsureSuccessStatusCode();
+        var confirmation = Assert.Single(factory.Mail.Messages, x => x.Email == email);
+        var link = new Uri(System.Text.RegularExpressions.Regex.Match(confirmation.Body, @"https?://\S+").Value);
+        Assert.Equal("https://finpilot.test", link.GetLeftPart(UriPartial.Authority));
+        (await client.GetAsync(link.PathAndQuery)).EnsureSuccessStatusCode();
+
+        client.DefaultRequestHeaders.Remove("X-Forwarded-Host");
+        client.DefaultRequestHeaders.Add("X-Forwarded-Host", "attacker.example.test");
+        var otherEmail = $"{Guid.NewGuid():N}@example.test";
+        (await client.PostAsJsonAsync("/api/auth/register", new { email = otherEmail, password = "Initial-Password1!" })).EnsureSuccessStatusCode();
+        var otherConfirmation = Assert.Single(factory.Mail.Messages, x => x.Email == otherEmail);
+        var otherLink = new Uri(System.Text.RegularExpressions.Regex.Match(otherConfirmation.Body, @"https?://\S+").Value);
+        Assert.Equal("render.internal", otherLink.Host);
+        Assert.DoesNotContain("attacker.example.test", otherConfirmation.Body);
+    }
+
     private static JsonObject Obligation(Guid? id = null, JsonArray? payments = null) => new()
     {
         ["id"] = (id ?? Guid.NewGuid()).ToString(), ["direction"] = "Out", ["label"] = "Inventory",

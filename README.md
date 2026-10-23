@@ -115,13 +115,102 @@ npm --prefix frontend ci
 npm --prefix frontend run build
 ```
 
-Tùy chọn `FINPILOT_TEST_POSTGRES` trỏ tới PostgreSQL 17 riêng cho test (quyền CREATE DATABASE); suite tạo/xóa database tạm duy nhất. Nếu không đặt biến này, Testcontainers là mặc định.
+Tùy chọn `FINPILOT_TEST_POSTGRES` trỏ tới PostgreSQL 17 riêng cho test (tài khoản quản trị để tạo/xóa database và role tạm); suite chạy API bằng role chủ bảng không có superuser/BYPASSRLS. Nếu không đặt biến này, Testcontainers là mặc định.
 
-Toàn bộ test backend cần Docker đang chạy: Testcontainers tự tạo PostgreSQL 17 tạm và áp dụng EF migrations. CI Ubuntu dùng Docker có sẵn; đồng thời chạy `npm ci` + build frontend với Node 22.
+CI Ubuntu dùng Docker có sẵn cho PostgreSQL test; đồng thời chạy `npm ci` + build frontend với Node 22.
 
-## Hosting pilot cùng origin
+## Triển khai
 
-Build frontend rồi sao chép nội dung `frontend/dist/` vào `backend/src/FinPilot.Api/wwwroot/` trước khi publish API. ASP.NET phục vụ file tĩnh và fallback về `index.html` cho các tuyến SPA. File build không được đưa vào git.
+Frontend ở Vercel, API Docker ở Render, PostgreSQL ở Supabase; chọn Singapore cho Render và Supabase. Trình duyệt chỉ gọi URL Vercel: rewrite `/api/*` chuyển đến Render, giữ cookie HttpOnly/SameSite Strict và CSRF cùng origin. Frontend đã dùng URL tương đối và `credentials: 'same-origin'`, không cần sửa mã hay thêm biến môi trường frontend/CORS.
+
+### 1. Tạo database Supabase
+
+Trong Supabase chọn **New project**, vùng **Southeast Asia (Singapore)**, đặt và lưu mật khẩu database. Mở **Connect → Session pooler**, chọn chuỗi kết nối IPv4, cổng **5432**. Giữ nguyên host và username có project ref do dashboard cấp; không dùng Transaction pooler cổng 6543. Direct connection mặc định chỉ có IPv6, Render không kết nối được nếu chưa mua IPv4 add-on.
+
+Chuỗi Npgsql cho API và EF migrations:
+
+```text
+Host=<session-pooler-host>;Port=5432;Database=postgres;Username=postgres.<project-ref>;Password=<database-password>;SSL Mode=Require;Trust Server Certificate=true
+```
+
+`Require` mã hóa đường truyền; cấu hình trên không xác minh chứng chỉ máy chủ. Nếu dùng chứng chỉ CA do Supabase cấp, dùng `SSL Mode=VerifyFull;Root Certificate=<đường-dẫn-CA>` thay hai tùy chọn SSL trên và cấp cùng file CA cho môi trường chạy. Dùng cùng tài khoản chủ bảng để chạy migration và API; Supabase anon/service-role API keys không phải mật khẩu PostgreSQL.
+
+### 2. Tạo API Render
+
+Trong Render chọn **New → Blueprint**, kết nối repo và nhánh chứa `render.yaml`, rồi **Apply**. Blueprint chọn Dockerfile ở gốc repo, vùng Singapore, gói Free và health check `/api/health`; container chạy non-root và đọc `$PORT` do Render cấp. Điền các giá trị được hỏi (`sync: false`), hoặc sửa tại **Service → Environment**:
+
+| Biến Render | Giá trị |
+| --- | --- |
+| `ConnectionStrings__Default` | Chuỗi Npgsql Session pooler ở bước 1 |
+| `App__PublicBaseUrl` | `https://<ten-project>.vercel.app` dự kiến; cập nhật URL thật sau bước 3, không có dấu `/` cuối |
+| `Smtp__Host`, `Smtp__Port`, `Smtp__UseStartTls` | SMTP thật; thường cổng `587`, STARTTLS `true` |
+| `Smtp__Username`, `Smtp__Password`, `Smtp__From` | Tài khoản, mật khẩu và địa chỉ gửi đã được nhà cung cấp SMTP cho phép |
+
+`ASPNETCORE_ENVIRONMENT=Production` đã có trong blueprint. Lưu hostname Render, ví dụ `finpilot-api-xxxx.onrender.com`. Không bật tự chạy migration lúc khởi động; hoàn thành bước 4 trước khi sử dụng API.
+
+### 3. Tạo frontend Vercel
+
+Thay `REPLACE_WITH_RENDER_HOST.onrender.com` trong **`frontend/vercel.json`** bằng hostname Render thật, giữ `https://` và `/api/:path*`, rồi đưa thay đổi lên nhánh triển khai. Placeholder này là cấu hình trong file, không được Vercel thay bằng biến môi trường.
+
+Trong Vercel chọn **Add New → Project → Import** repo, chọn **Root Directory = `frontend`**, **Framework Preset = Vite**, build `npm run build`, output `dist`, Node.js **22.x**, rồi **Deploy**. Không cấp connection string, SMTP hoặc Supabase keys cho Vercel. Rewrite API đứng trước fallback SPA; `/reset-password` và đường dẫn có hash đều tải được ứng dụng. Nếu bật Deployment Protection, cho phép người dùng pilot truy cập URL production.
+
+Sao chép URL production Vercel về `App__PublicBaseUrl` trên Render rồi **Save, rebuild, and deploy**. Khi thêm domain riêng, cập nhật URL này và triển khai lại API.
+
+### 4. Áp dụng migrations và tắt Data API
+
+Trên máy phát triển có .NET SDK theo `global.json`, chạy từ gốc repo. Nhập connection string kín thay vì ghi mật khẩu vào lịch sử lệnh hoặc file:
+
+```powershell
+$secret = Read-Host 'Supabase Npgsql connection string' -AsSecureString
+$env:ConnectionStrings__Default = [System.Net.NetworkCredential]::new('', $secret).Password
+try {
+    dotnet tool restore
+    dotnet ef migrations list --project backend/src/FinPilot.Api
+    dotnet ef database update --project backend/src/FinPilot.Api
+} finally {
+    Remove-Item Env:ConnectionStrings__Default
+    Remove-Variable secret
+}
+```
+
+Migration tạo cả `public.DataProtectionKeys`: giữ nguyên bảng này và application name `FinPilot` qua các lần deploy để cookie, CSRF và link Identity còn hiệu lực. Khóa lưu trong database, không phụ thuộc ổ đĩa tạm Render. Migration cũng bật RLS, không có policy, cho toàn bộ bảng ứng dụng ở `public` và `finpilot` (kể cả bảng khóa và lịch sử EF); không FORCE RLS nên chủ bảng vẫn truy cập được. View số dư dùng `security_invoker` để không vượt RLS. API tiếp tục chịu trách nhiệm cách ly người dùng theo shop.
+
+Trong Supabase mở **Project Settings → Data API → Enable Data API**, tắt và lưu vì ứng dụng không dùng PostgREST. Không cung cấp anon/service-role key cho frontend.
+
+Mở `https://<vercel-host>/api/health`, đăng ký tài khoản, bấm link xác nhận email, đăng nhập, tạo shop và thử khôi phục mật khẩu. Identity tạo link xác nhận bằng `LinkGenerator.GetUriByName(HttpContext, ...)`: scheme/host lấy từ request sau `UseForwardedHeaders`, không lấy từ `App__PublicBaseUrl`. [Vercel external rewrites](https://vercel.com/docs/rewrites) gửi `X-Forwarded-Host` là domain người dùng truy cập và `X-Forwarded-Proto=https`; API xử lý cả hai trước HTTPS redirection. Kiểm tra mail thực tế qua cả Vercel và Render: nếu lớp proxy thay host, link xác nhận có thể trỏ Render và vẫn xác nhận được qua GET `/api/auth/confirmEmail`. Link đặt lại mật khẩu luôn trỏ frontend theo `App__PublicBaseUrl`.
+
+### 5. Sao lưu và thử khôi phục
+
+Supabase Free không có bản backup tải xuống. Trong GitHub repo mở **Settings → Secrets and variables → Actions → New repository secret**, tạo:
+
+- `SUPABASE_DB_URL`: URI PostgreSQL **Session pooler** từ bước 1, dạng `postgresql://postgres.<project-ref>:<url-encoded-password>@<session-pooler-host>:5432/postgres?sslmode=require`. Phải URL-encode ký tự đặc biệt trong mật khẩu; đây không phải chuỗi Npgsql.
+- `BACKUP_PASSPHRASE`: mật khẩu ngẫu nhiên dài, một dòng, dùng mã hóa GPG AES256. **Giữ một bản trong trình quản lý mật khẩu bên ngoài GitHub** để còn khôi phục khi mất quyền repo.
+
+Workflow `Database backup` chạy lúc 03:00 giờ Việt Nam hằng ngày trên nhánh mặc định. Mở **Actions → Database backup → Run workflow**, chờ thành công, tải artifact `finpilot-db-<run-id>` và giải nén lấy `finpilot.dump.gpg`. Chỉ file đã mã hóa được upload, giữ **7 ngày**; thiếu secret thì workflow thất bại. Repo public nên không được upload dump rõ. Theo dõi lần chạy lỗi; lịch GitHub có thể trễ và bị tắt sau thời gian repo public không hoạt động. Tải bản mã hóa ra nơi lưu độc lập nếu cần giữ lâu hơn.
+
+Dump dùng định dạng custom, chỉ chứa schema `public` và `finpilot`, gồm Identity, shop, Data Protection keys và lịch sử migrations; không sao lưu các dịch vụ Supabase Auth/Storage không dùng. Workflow dùng client PostgreSQL 17; khi nâng major PostgreSQL, nâng image `postgres:17` tương ứng vì `pg_dump` không hỗ trợ server major mới hơn nó.
+
+Để thử khôi phục trên PostgreSQL 17 cục bộ/portable, cài GPG (ví dụ Gpg4win), đưa GPG và PostgreSQL `bin` vào PATH. Ví dụ PowerShell, chỉ tạo database thử mới; không dùng database đang phục vụ pilot:
+
+```powershell
+gpg --output finpilot.dump --decrypt finpilot.dump.gpg # GPG hỏi passphrase, không đặt trên dòng lệnh
+$env:PGHOST = '127.0.0.1'
+$env:PGPORT = '55432' # hoặc cổng PostgreSQL cục bộ của bạn
+$env:PGUSER = 'fp_test' # role cục bộ có quyền CREATE DATABASE; dùng prompt/pgpass nếu có mật khẩu
+$restoreDb = 'finpilot_restore_' + [guid]::NewGuid().ToString('N')
+createdb $restoreDb
+if ($LASTEXITCODE -ne 0) { throw 'Không tạo được database thử mới' }
+psql --dbname $restoreDb -v ON_ERROR_STOP=1 -c 'DROP SCHEMA public;' # bỏ schema rỗng mặc định; dump sẽ tạo lại
+if ($LASTEXITCODE -ne 0) { throw 'Không chuẩn bị được database thử' }
+pg_restore --exit-on-error --no-owner --no-privileges --dbname $restoreDb finpilot.dump
+if ($LASTEXITCODE -ne 0) { throw 'Khôi phục thất bại' }
+psql --dbname $restoreDb -c 'SELECT count(*) FROM finpilot.shops;'
+psql --dbname $restoreDb -c 'SELECT count(*) FROM finpilot.obligations;'
+```
+
+Mọi lệnh phải thành công. Đối chiếu số shop, nghĩa vụ và giá trị tiền với dữ liệu nguồn tại thời điểm dump; trỏ API phát triển vào database thử bằng `ConnectionStrings__Default` để kiểm tra tài khoản và dữ liệu đã phục hồi. Sau khi dừng API thử: `dropdb $restoreDb`, xóa dump đã giải mã và gỡ các biến môi trường thử. Không chạy `--clean` hoặc restore đè database pilot. Mã dump → mã hóa → giải mã → `pg_restore` đã được thử trên PostgreSQL portable 17; phải lặp lại bằng artifact Supabase thật sau khi cấu hình secrets.
+
+Render Free ngủ khi không có truy cập, lần gọi đầu có thể chờ khoảng **1 phút**. Supabase Free có thể tạm dừng project không hoạt động và có giới hạn dung lượng/kết nối; GitHub Actions/artifact cũng có hạn mức và không bảo đảm lịch sao lưu. Chọn gói trả phí nếu pilot cần luôn sẵn sàng hoặc thời gian khôi phục có cam kết.
 
 ## Cấu trúc repo
 

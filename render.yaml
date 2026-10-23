@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: finpilot-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ConnectionStrings__Default
+        sync: false
+      - key: App__PublicBaseUrl
+        sync: false
+      - key: Smtp__Host
+        sync: false
+      - key: Smtp__Port
+        sync: false
+      - key: Smtp__UseStartTls
+        sync: false
+      - key: Smtp__Username
+        sync: false
+      - key: Smtp__Password
+        sync: false
+      - key: Smtp__From
+        sync: false

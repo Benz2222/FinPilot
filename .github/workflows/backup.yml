@@ -1,0 +1,44 @@
+name: Database backup
+
+on:
+  schedule:
+    - cron: '0 20 * * *' # 03:00 Vietnam
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    container: postgres:17
+    timeout-minutes: 15
+    env:
+      PGDATABASE: ${{ secrets.SUPABASE_DB_URL }}
+      PGSSLMODE: require
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+    steps:
+      - name: Require backup secrets
+        shell: bash
+        run: |
+          test -n "$PGDATABASE" || { echo 'Set SUPABASE_DB_URL in repository Actions secrets.'; exit 1; }
+          test -n "$BACKUP_PASSPHRASE" || { echo 'Set BACKUP_PASSPHRASE in repository Actions secrets.'; exit 1; }
+      - name: Install GPG
+        run: apt-get update && apt-get install --yes --no-install-recommends gnupg
+      - name: Dump application schemas
+        shell: bash
+        run: |
+          pg_dump --dbname "$PGDATABASE" --format=custom --no-owner --no-privileges \
+            --schema=public --schema=finpilot --file=finpilot.dump
+          pg_restore --list finpilot.dump > /dev/null
+      - name: Encrypt backup
+        shell: bash
+        run: |
+          printf '%s\n' "$BACKUP_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback \
+            --passphrase-fd 0 --symmetric --cipher-algo AES256 --output finpilot.dump.gpg finpilot.dump
+          rm finpilot.dump
+      - uses: actions/upload-artifact@v4
+        with:
+          name: finpilot-db-${{ github.run_id }}
+          path: finpilot.dump.gpg
+          retention-days: 7
+          if-no-files-found: error
