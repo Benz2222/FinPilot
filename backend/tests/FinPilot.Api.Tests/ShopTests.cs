@@ -139,20 +139,20 @@ public sealed class ShopTests(ShopFixture factory) : IClassFixture<ShopFixture>
             Task.FromException(new System.Net.Mail.SmtpException("Provider rejected a sensitive reset link/code."));
         try
         {
-            (await client.PostAsJsonAsync("/api/auth/register", credentials).WaitAsync(TimeSpan.FromSeconds(10)))
+            (await client.PostAsJsonAsync("/api/auth/register", credentials).WaitAsync(TimeSpan.FromSeconds(30)))
                 .EnsureSuccessStatusCode();
             (await client.PostAsJsonAsync("/api/auth/login", credentials)).EnsureSuccessStatusCode();
             await ShopFixture.Token(client);
             // The second send never completes, even when cancellation is requested.
             (await client.PostAsJsonAsync("/api/auth/resendConfirmationEmail", new { email })
-                .WaitAsync(TimeSpan.FromSeconds(10))).EnsureSuccessStatusCode();
+                .WaitAsync(TimeSpan.FromSeconds(30))).EnsureSuccessStatusCode();
             using (var scope = factory.Services.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 (await db.Users.SingleAsync(user => user.Email == email)).EmailConfirmed = true;
                 await db.SaveChangesAsync();
             }
-            (await client.PostAsJsonAsync("/api/auth/forgotPassword", new { email }).WaitAsync(TimeSpan.FromSeconds(10)))
+            (await client.PostAsJsonAsync("/api/auth/forgotPassword", new { email }).WaitAsync(TimeSpan.FromSeconds(30)))
                 .EnsureSuccessStatusCode();
             Assert.Equal(3, attempts);
         }

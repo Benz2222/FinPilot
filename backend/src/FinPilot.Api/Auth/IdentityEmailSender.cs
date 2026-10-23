@@ -53,7 +53,7 @@ public sealed class SmtpEmailDelivery(IOptions<SmtpSettings> options, IWebHostEn
 public sealed class IdentityEmailSender(IEmailDelivery delivery, IConfiguration configuration,
     ILogger<IdentityEmailSender> logger) : IEmailSender<IdentityUser>
 {
-    private static readonly TimeSpan DeliveryTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan DeliveryTimeout = TimeSpan.FromSeconds(20);
 
     private async Task Send(string kind, string email, string subject, string body)
     {
