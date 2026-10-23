@@ -1,13 +1,19 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/inter";
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/ibm-plex-mono/600.css";
 
 @theme inline {
-    --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
-    --font-heading: var(--font-sans);
+    --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', monospace;
     --color-background: var(--background);
     --color-foreground: var(--foreground);
+    --color-glass: var(--glass);
     --color-card: var(--card);
     --color-card-foreground: var(--card-foreground);
     --color-popover: var(--popover);
@@ -19,13 +25,11 @@
     --color-secondary-foreground: var(--secondary-foreground);
     --color-muted: var(--muted);
     --color-muted-foreground: var(--muted-foreground);
-    --color-accent: var(--accent);
-    --color-accent-foreground: var(--accent-foreground);
     --color-destructive: var(--destructive);
     --color-border: var(--border);
     --color-input: var(--input);
+    --color-input-hover: var(--input-hover);
     --color-ring: var(--ring);
-    --color-balance: var(--balance);
     --color-shortage: var(--shortage);
     --color-shortage-soft: var(--shortage-soft);
     --color-shortage-line: var(--shortage-line);
@@ -42,41 +46,46 @@
     --radius-xl: calc(var(--radius) * 1.4);
 }
 
+/*
+ * Cash-flow cockpit: a dark instrument panel. Surfaces step up in lightness (background → glass → card → popover);
+ * cyan is the instrument (brand) colour; green / amber / red are status only. Every text pairing meets WCAG AA on
+ * every surface, and control edges (--input) reach 3:1 against the card and the input well.
+ */
 :root {
-    /* Neutral slate surfaces, one blue accent, and semantic red / amber / green. All text pairings meet WCAG AA on white and on --background. */
-    --background: #f6f7f9;
-    --foreground: #101828;
-    --card: #ffffff;
+    color-scheme: dark;
+    --background: #090d12;
+    --foreground: #e6ecf3;
+    --glass: #0c1218;
+    --card: #10161d;
     --card-foreground: var(--foreground);
-    --popover: #ffffff;
+    --popover: #161e28;
     --popover-foreground: var(--foreground);
-    --primary: #2952cc;
-    --primary-foreground: #ffffff;
-    --primary-soft: #eef2fd;
-    --secondary: #f2f4f7;
-    --secondary-foreground: #344054;
-    --muted: #f2f4f7;
-    --muted-foreground: #5b6474;
-    --accent: #f2f4f7;
-    --accent-foreground: var(--foreground);
-    --destructive: #b42318;
-    --border: #e4e7ec;
-    --input: #d0d5dd;
-    --ring: #2952cc;
+    --primary: #4cc9e0;
+    --primary-foreground: #04161c;
+    --primary-soft: rgb(76 201 224 / 0.12);
+    --secondary: #18212b;
+    --secondary-foreground: #c2ccd8;
+    --muted: #151c25;
+    --muted-foreground: #8d9aab;
+    --destructive: #ff6b6b;
+    --border: #212b37;
+    --input: #5b6c82;
+    --input-hover: #71839b;
+    --ring: #4cc9e0;
     --radius: 0.5rem;
 
     /* Money below zero, things that need care, things that are fine. */
     --balance: var(--primary);
-    --shortage: #b42318;
-    --shortage-soft: #fef3f2;
-    --shortage-line: #fda29b;
-    --caution: #93370d;
-    --caution-soft: #fffaeb;
-    --caution-line: #fedf89;
-    --caution-mark: #f79009;
-    --ok: #067647;
-    --ok-soft: #ecfdf3;
-    --ok-line: #abefc6;
+    --shortage: #ff6464;
+    --shortage-soft: rgb(255 100 100 / 0.1);
+    --shortage-line: rgb(255 100 100 / 0.42);
+    --caution: #f5b54a;
+    --caution-soft: rgb(245 181 74 / 0.1);
+    --caution-line: rgb(245 181 74 / 0.4);
+    --caution-mark: #f5b54a;
+    --ok: #40d692;
+    --ok-soft: rgb(64 214 146 / 0.1);
+    --ok-line: rgb(64 214 146 / 0.38);
 }
 
 @layer base {
@@ -85,7 +94,6 @@
   }
   html {
     @apply font-sans;
-    font-feature-settings: 'cv11', 'ss01';
   }
   body {
     @apply min-h-svh bg-background text-foreground antialiased;
@@ -105,6 +113,35 @@
   .num {
     font-variant-numeric: tabular-nums lining-nums;
   }
+  /* Every figure is a readout: monospaced. */
+  .num {
+    font-family: var(--font-mono);
+  }
+  /* Instrument placard: small, tracked, upper-case label. */
+  .placard {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    line-height: 1.2;
+  }
+}
+
+/* Chart axes and in-chart labels read like instrument markings. */
+.recharts-cartesian-axis-tick text,
+.chart-placard {
+  font-family: var(--font-mono);
+}
+.chart-placard {
+  letter-spacing: 0.08em;
+  font-weight: 500;
+}
+
+/* Master-warning lamp: a slow glow, only while money runs short. Reduced motion stops it (see below). */
+@keyframes lamp {
+  0%, 100% { box-shadow: 0 0 0 1px var(--shortage-line), 0 0 18px -6px var(--shortage); }
+  50% { box-shadow: 0 0 0 1px var(--shortage), 0 0 30px -4px var(--shortage); }
 }
 
 @media (prefers-reduced-motion: reduce) {

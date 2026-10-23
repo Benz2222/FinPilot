@@ -42,7 +42,7 @@ export function CashTrail({ result, events }: { result: ForecastResponse; events
 
   return (
     <ol className="divide-y">
-      <li aria-hidden="true" className="hidden grid-cols-[6rem_minmax(0,1fr)_minmax(0,12rem)_9.5rem] gap-x-4 bg-muted/60 px-5 py-2 text-xs font-medium text-muted-foreground sm:grid">
+      <li aria-hidden="true" className="hidden grid-cols-[6rem_minmax(0,1fr)_minmax(0,12rem)_9.5rem] gap-x-4 bg-glass px-5 py-2.5 placard text-muted-foreground sm:grid">
         <span>Ngày</span>
         <span>Khoản</span>
         <span>Số dư sau khoản</span>

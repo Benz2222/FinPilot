@@ -1,5 +1,5 @@
 import { useId } from 'react'
-import { toPlotNumber } from '@/lib/money'
+import { isNegative, toPlotNumber } from '@/lib/money'
 
 const W = 560
 const H = 64
@@ -18,9 +18,20 @@ export function Sparkline({ closings, domain, shortageIndex }: { closings: strin
     d += ` L${(i + 1) * step} ${v}`
   })
   const area = `${d} L${W} ${zero} L0 ${zero} Z`
+  // Red only on days that close below zero; a day at exactly 0 is not short, so the line stays blue there.
+  let short = ''
+  closings.forEach((c, i) => {
+    if (!isNegative(c)) return
+    const v = y(toPlotNumber(c))
+    const continues = i > 0 && isNegative(closings[i - 1])
+    short += continues ? ` L${i * step} ${v}` : ` M${i * step} ${i > 0 ? zero : v} L${i * step} ${v}`
+    short += ` L${(i + 1) * step} ${v}`
+    if (i + 1 < closings.length && !isNegative(closings[i + 1])) short += ` L${(i + 1) * step} ${zero}`
+  })
 
   return (
-    <svg aria-hidden="true" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-16 w-full overflow-visible">
+    <div aria-hidden="true" className="rounded-md border bg-glass px-3 py-3">
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-16 w-full overflow-visible">
       <defs>
         <clipPath id={`${uid}-above`}>
           <rect x="0" y="0" width={W} height={Math.max(0, zero)} />
@@ -29,11 +40,11 @@ export function Sparkline({ closings, domain, shortageIndex }: { closings: strin
           <rect x="0" y={zero} width={W} height={Math.max(0, H - zero)} />
         </clipPath>
       </defs>
-      <path d={area} fill="var(--balance)" fillOpacity="0.1" clipPath={`url(#${uid}-above)`} />
-      <path d={area} fill="var(--shortage)" fillOpacity="0.16" clipPath={`url(#${uid}-below)`} />
+      <path d={area} fill="var(--balance)" fillOpacity="0.12" clipPath={`url(#${uid}-above)`} />
+      <path d={area} fill="var(--shortage)" fillOpacity="0.2" clipPath={`url(#${uid}-below)`} />
       <line x1="0" x2={W} y1={zero} y2={zero} stroke="var(--muted-foreground)" strokeOpacity="0.5" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-      <path d={d} fill="none" stroke="var(--balance)" strokeWidth="1.75" vectorEffect="non-scaling-stroke" clipPath={`url(#${uid}-above)`} />
-      <path d={d} fill="none" stroke="var(--shortage)" strokeWidth="1.75" vectorEffect="non-scaling-stroke" clipPath={`url(#${uid}-below)`} />
+      <path d={d} fill="none" stroke="var(--balance)" strokeWidth="1.75" vectorEffect="non-scaling-stroke" />
+      {short && <path d={short} fill="none" stroke="var(--shortage)" strokeWidth="1.75" vectorEffect="non-scaling-stroke" />}
       {shortageIndex !== null && (
         <line
           x1={shortageIndex * step}
@@ -47,5 +58,6 @@ export function Sparkline({ closings, domain, shortageIndex }: { closings: strin
         />
       )}
     </svg>
+    </div>
   )
 }

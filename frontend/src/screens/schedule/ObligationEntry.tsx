@@ -20,7 +20,7 @@ const STATUS_TEXT = { open: 'Còn mở', paid: 'Đã xong', cancelled: 'Đã h�
 
 /** Inline form below a row (payment, new date); spans the label and amount columns. */
 function InlinePanel({ children }: { children: ReactNode }) {
-  return <div className="col-span-full rounded-lg border bg-muted/50 p-3 sm:col-span-2 sm:col-start-2">{children}</div>
+  return <div className="col-span-full rounded-lg border border-primary/30 bg-glass p-3 sm:col-span-2 sm:col-start-2 sm:p-4">{children}</div>
 }
 
 function PaymentForm({ obligation, onDone }: { obligation: Obligation; onDone: () => void }) {
@@ -134,7 +134,7 @@ export function ObligationEntry({ obligation, overdue = false, date }: { obligat
   if (mode === 'edit') {
     return (
       <div className="px-4 py-4 sm:px-5">
-        <div className="rounded-lg border border-primary/30 bg-card p-4 ring-3 ring-primary/10">
+        <div className="rounded-lg border border-primary/40 bg-glass p-4 ring-3 ring-primary/10">
           <p className="mb-3 text-sm font-semibold">Sửa khoản</p>
           <ObligationForm
             initial={{ direction: obligation.direction, label: obligation.label, amount: obligation.amount, date: obligation.date, note: obligation.note }}
@@ -157,7 +157,7 @@ export function ObligationEntry({ obligation, overdue = false, date }: { obligat
     <article
       aria-labelledby={`${uid}-label`}
       className={cn(
-        'grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)_auto] sm:px-5',
+        'grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 px-4 py-3.5 transition-colors hover:bg-white/[0.02] sm:grid-cols-[8.5rem_minmax(0,1fr)_auto] sm:px-5',
         done && 'text-muted-foreground',
       )}
     >
@@ -167,8 +167,8 @@ export function ObligationEntry({ obligation, overdue = false, date }: { obligat
         <span
           aria-hidden="true"
           className={cn(
-            'mt-0.5 grid size-7 shrink-0 place-items-center rounded-full',
-            done ? 'bg-muted text-muted-foreground' : isIn ? 'bg-ok-soft text-ok' : 'bg-muted text-secondary-foreground',
+            'mt-0.5 grid size-8 shrink-0 place-items-center rounded-md border',
+            done ? 'border-border text-muted-foreground' : isIn ? 'border-ok-line bg-ok-soft text-ok' : 'border-input/70 bg-secondary text-secondary-foreground',
           )}
         >
           {isIn ? <ArrowDownLeft className="size-4" /> : <ArrowUpRight className="size-4" />}
@@ -185,7 +185,7 @@ export function ObligationEntry({ obligation, overdue = false, date }: { obligat
 
           {partial && (
             <div className="mt-2 grid max-w-md gap-1">
-              <div aria-hidden="true" className="h-1.5 overflow-hidden rounded-full bg-muted">
+              <div aria-hidden="true" className="h-1.5 overflow-hidden rounded-full bg-secondary">
                 <div className={cn('h-full rounded-full', isIn ? 'bg-ok' : 'bg-primary')} style={{ width: `${percent}%` }} />
               </div>
               <p className="num text-xs text-muted-foreground">
@@ -198,7 +198,7 @@ export function ObligationEntry({ obligation, overdue = false, date }: { obligat
                     {formatDate(p.date)}: {formatVnd(p.amount)}
                     <button
                       type="button"
-                      className="rounded px-1 font-medium text-destructive hover:underline"
+                      className="rounded px-1.5 py-0.5 font-medium text-destructive hover:bg-shortage-soft hover:underline"
                       aria-label={`Bỏ lần ${verb} ${formatVnd(p.amount)} ngày ${formatDate(p.date)}`}
                       onClick={() =>
                         void save({ ...obligation, status: obligation.status === 'paid' ? 'open' : obligation.status, payments: obligation.payments.filter((x) => x.id !== p.id) })
@@ -228,13 +228,13 @@ export function ObligationEntry({ obligation, overdue = false, date }: { obligat
       </div>
 
       <div className="flex items-start gap-1">
-        <p className={cn('num pt-0.5 text-right font-semibold whitespace-nowrap', !done && (isIn ? 'text-ok' : 'text-foreground'))}>
+        <p className={cn('num pt-1 text-right text-[0.9375rem] font-medium whitespace-nowrap', !done && (isIn ? 'text-ok' : 'text-foreground'))}>
           <span aria-hidden="true">{isIn ? '+' : '−'}</span>
           {formatVnd(done ? obligation.amount : left)}
         </p>
         <Menu>
           <MenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm" className="-my-1" aria-label={`Thao tác với “${obligation.label}”`}>
+            <Button variant="ghost" size="icon" className="-my-1.5" aria-label={`Thao tác với “${obligation.label}”`}>
               <MoreHorizontal aria-hidden="true" />
             </Button>
           </MenuTrigger>

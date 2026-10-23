@@ -142,12 +142,12 @@ export function ImportScreen() {
             <li key={label} aria-current={state === 'current' ? 'step' : undefined} className="flex items-center gap-2">
               <span
                 aria-hidden="true"
-                className={`num grid size-6 place-items-center rounded-full text-xs font-semibold ${
+                className={`num grid size-7 place-items-center rounded-full text-xs font-semibold ${
                   state === 'current'
-                    ? 'bg-primary text-primary-foreground'
+                    ? 'bg-primary text-primary-foreground shadow-[0_0_14px_-3px_var(--primary)]'
                     : state === 'done'
                       ? 'bg-ok-soft text-ok ring-1 ring-ok-line'
-                      : 'bg-card text-muted-foreground ring-1 ring-border'
+                      : 'bg-glass text-muted-foreground ring-1 ring-input/70'
                 }`}
               >
                 {state === 'done' ? <Check className="size-3.5" /> : n}
@@ -165,14 +165,14 @@ export function ImportScreen() {
       <ol className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
         <li>
           <Card className="grid h-full content-start gap-3 p-4 sm:p-5">
-            <div aria-hidden="true" className="grid size-10 place-items-center rounded-lg bg-primary-soft text-primary">
+            <div aria-hidden="true" className="grid size-11 place-items-center rounded-md border border-primary/30 bg-primary-soft text-primary">
               <FileSpreadsheet className="size-5" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Bước 1</p>
-              <h2 className="text-base font-semibold">Lấy tệp mẫu</h2>
+              <p className="placard text-muted-foreground">Bước 1</p>
+              <h2 className="mt-1 text-lg font-semibold">Lấy tệp mẫu</h2>
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm leading-relaxed text-secondary-foreground">
               Sáu cột: Loại (Thu/Chi), Nội dung, Số tiền, Ngày, Đã thanh toán, Ghi chú. Số tiền là số nguyên đồng; ngày dạng 2026-10-29 hoặc 29/10/2026.
             </p>
             <div className="flex flex-wrap gap-2">
@@ -194,12 +194,12 @@ export function ImportScreen() {
             }}
             onDragLeave={() => setDragging(false)}
             onDrop={onDrop}
-            className={`grid h-full min-h-48 cursor-pointer content-center justify-items-center gap-2 rounded-xl border-2 border-dashed p-6 text-center transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring ${
-              dragging ? 'border-primary bg-primary-soft' : 'border-input bg-card hover:border-primary/50 hover:bg-primary-soft/40'
+            className={`grid h-full min-h-52 cursor-pointer content-center justify-items-center gap-2 rounded-lg border-2 border-dashed p-6 text-center transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring ${
+              dragging ? 'border-primary bg-primary-soft' : 'border-input/80 bg-glass hover:border-primary hover:bg-primary-soft/50'
             }`}
           >
-            <span className="text-xs font-medium text-muted-foreground">Bước 2 · Tải tệp lên</span>
-            <span aria-hidden="true" className="grid size-11 place-items-center rounded-full bg-muted text-primary">
+            <span className="placard text-muted-foreground">Bước 2 · Tải tệp lên</span>
+            <span aria-hidden="true" className="my-1 grid size-12 place-items-center rounded-full border border-primary/40 bg-primary-soft text-primary">
               {loading ? <LoaderCircle className="size-5 motion-safe:animate-spin" /> : <FileUp className="size-5" />}
             </span>
             <span className="font-semibold">
@@ -253,18 +253,18 @@ export function ImportScreen() {
           <section aria-labelledby="check-title">
             <CardHeader className="pb-4 sm:pb-4">
               <div className="min-w-0">
-                <p className="text-xs font-medium text-muted-foreground">Bước 3 · Kiểm tra</p>
+                <p className="placard text-muted-foreground">Bước 3 · Kiểm tra</p>
                 <CardTitle id="check-title" className="break-all">
                   {preview.fileName}
                 </CardTitle>
                 <CardDescription className="num">
-                  {preview.rows.length} dòng · {preview.validCount} hợp lệ · {preview.errorCount} lỗi · mã {preview.fileSha256.slice(0, 10)}
+                  {preview.rows.length} dòng · {preview.validCount} hợp lệ · {preview.errorCount} lỗi
                 </CardDescription>
                 <p className="mt-1 text-sm text-muted-foreground">Chưa có gì được ghi vào lịch cho đến khi bạn bấm nút ở cuối.</p>
               </div>
               {errorRows.length > 0 && (
                 <label className="inline-flex shrink-0 items-center gap-2 text-sm font-medium">
-                  <input type="checkbox" className="size-4 accent-primary" checked={errorsOnly} onChange={(e) => setErrorsOnly(e.target.checked)} />
+                  <input type="checkbox" className="size-5 accent-primary" checked={errorsOnly} onChange={(e) => setErrorsOnly(e.target.checked)} />
                   Chỉ xem dòng lỗi ({errorRows.length})
                 </label>
               )}
@@ -272,7 +272,7 @@ export function ImportScreen() {
 
             <div
               aria-hidden="true"
-              className="hidden grid-cols-[5.5rem_5.5rem_minmax(0,1fr)_8.5rem_6rem_7.5rem] gap-x-4 border-y bg-muted/60 px-5 py-2 text-xs font-medium text-muted-foreground md:grid"
+              className="placard hidden grid-cols-[5.5rem_5.5rem_minmax(0,1fr)_8.5rem_6rem_7.5rem] gap-x-4 border-y bg-glass px-5 py-2.5 text-muted-foreground md:grid"
             >
               <span>Dòng</span>
               {COLUMNS.slice(0, 5).map((c) => (
@@ -286,7 +286,7 @@ export function ImportScreen() {
                 const errorCols = new Set(p.row.errors.map((e) => e.column))
                 const beforeStart = p.valid && cutoff && p.row.date! <= cutoff && p.row.paid !== p.row.amount
                 return (
-                  <li key={p.row.rowNumber} className={`px-4 py-3 sm:px-5 ${!p.valid ? 'bg-shortage-soft/60' : p.duplicateOf ? 'bg-caution-soft/70' : ''}`}>
+                  <li key={p.row.rowNumber} className={`px-4 py-3.5 sm:px-5 ${!p.valid ? 'bg-shortage-soft' : p.duplicateOf ? 'bg-caution-soft' : ''}`}>
                     <div className="grid gap-x-4 gap-y-2 md:grid-cols-[5.5rem_minmax(0,1fr)]">
                       <div className="flex items-center gap-2 md:grid md:content-start md:justify-items-start md:gap-1">
                         <span className="num text-xs text-muted-foreground">Dòng {p.row.rowNumber}</span>
@@ -325,7 +325,7 @@ export function ImportScreen() {
                           <label className="mt-2 flex items-start gap-2 text-sm text-secondary-foreground">
                             <input
                               type="checkbox"
-                              className="mt-0.5 size-4 shrink-0 accent-primary"
+                              className="mt-0.5 size-5 shrink-0 accent-primary"
                               checked={include.has(p.row.rowNumber)}
                               onChange={(e) => {
                                 const next = new Set(include)
@@ -341,7 +341,7 @@ export function ImportScreen() {
                           </label>
                         )}
                         {beforeStart && (
-                          <p className="mt-1 text-xs text-caution">Ngày này không sau ngày chốt {formatDate(cutoff)}: sẽ hiện là khoản quá hạn cần ngày mới.</p>
+                          <p className="mt-1 text-xs text-caution">Ngày này không sau ngày {formatDate(cutoff)} (ngày tính số dư hiện có): sẽ hiện là khoản quá hạn cần ngày mới.</p>
                         )}
                       </div>
                     </div>
@@ -350,7 +350,7 @@ export function ImportScreen() {
               })}
             </ol>
 
-            <div className="grid gap-3 border-t bg-muted/40 px-4 py-4 sm:px-5">
+            <div className="grid gap-3 border-t bg-glass px-4 py-4 sm:px-5">
               <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                 <div className="text-sm">
                   <p className="font-medium">Sẽ thêm vào lịch</p>
@@ -359,16 +359,21 @@ export function ImportScreen() {
                     <p className="text-muted-foreground">Bỏ qua {duplicates.length - duplicates.filter((d) => include.has(d.row.rowNumber)).length} dòng có thể trùng</p>
                   )}
                 </div>
-                <p className="num text-2xl font-semibold tracking-tight">{toAdd.length} dòng</p>
+                <p className="num text-2xl font-medium tracking-tight text-primary">{toAdd.length} dòng</p>
               </div>
               {planned.some((p) => p.valid && p.row.paid && p.row.paid !== '0') && (
-                <p className="text-xs text-muted-foreground">Số “Đã thanh toán” được coi là đã nằm trong số dư chốt; chỉ phần còn lại được đưa vào dự báo.</p>
+                <p className="text-xs text-muted-foreground">Số “Đã thanh toán” được coi là đã nằm trong số dư hiện có; chỉ phần còn lại được đưa vào dự báo.</p>
               )}
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
                 {blockedReason && (
                   <p id="commit-blocked" className="text-sm font-medium text-shortage sm:mr-auto">
                     {blockedReason}
                   </p>
+                )}
+                {previous && (
+                  <a href="#lich" className={`${buttonVariants({ variant: 'outline', size: 'lg' })} w-full sm:w-auto`}>
+                    Mở Lịch thu–chi <ArrowRight aria-hidden="true" />
+                  </a>
                 )}
                 <Button
                   size="lg"

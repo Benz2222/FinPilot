@@ -13,7 +13,7 @@ function MenuContent({ className, align = "end", sideOffset = 6, ...props }: Rea
         sideOffset={sideOffset}
         collisionPadding={8}
         className={cn(
-          "z-50 min-w-48 overflow-hidden rounded-lg border bg-popover p-1 text-sm text-popover-foreground shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+          "z-50 min-w-48 overflow-hidden rounded-lg border border-input/60 bg-popover p-1 text-sm text-popover-foreground shadow-[0_16px_40px_-8px_rgb(0_0_0/0.65)] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
           className
         )}
         {...props}
@@ -26,7 +26,7 @@ function MenuItem({ className, tone, ...props }: React.ComponentProps<typeof Dro
   return (
     <DropdownMenu.Item
       className={cn(
-        "flex cursor-default items-center gap-2 rounded-md px-2.5 py-2 outline-none select-none data-[disabled]:opacity-50 data-[highlighted]:bg-muted [&_svg]:size-4 [&_svg]:text-muted-foreground",
+        "flex min-h-10 cursor-default items-center gap-2.5 rounded-md px-2.5 py-2 outline-none select-none data-[disabled]:opacity-50 data-[highlighted]:bg-secondary [&_svg]:size-4 [&_svg]:text-muted-foreground",
         tone === "danger" && "text-destructive data-[highlighted]:bg-shortage-soft [&_svg]:text-destructive",
         className
       )}

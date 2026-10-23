@@ -157,6 +157,7 @@ function RegisterForm({ onRegistered }: { onRegistered: (notice: string) => void
     <AuthLayout
       title="Tạo tài khoản"
       description="Mỗi tài khoản quản lý dữ liệu của một shop."
+      steps
       footer={
         <>
           Đã có tài khoản?{' '}

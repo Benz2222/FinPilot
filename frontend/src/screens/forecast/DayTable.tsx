@@ -13,7 +13,7 @@ interface DayTableProps {
   events: CashEvent[]
 }
 
-const stickyHead = 'sticky top-0 z-10 bg-muted shadow-[inset_0_-1px_0_var(--border)]'
+const stickyHead = 'placard sticky top-0 z-10 bg-muted shadow-[inset_0_-1px_0_var(--border)]'
 
 /** Every day of the forecast as a table: collapsed by default, it is also the text alternative to the chart. */
 export function DayTable({ result, events }: DayTableProps) {

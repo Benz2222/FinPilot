@@ -3,11 +3,11 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
 
 const alertVariants = cva(
-  "grid w-full gap-x-3 gap-y-1 rounded-lg border px-4 py-3 text-sm has-[>svg]:grid-cols-[auto_minmax(0,1fr)] *:[svg]:row-span-3 *:[svg]:mt-0.5 *:[svg:not([class*='size-'])]:size-4",
+  "grid w-full gap-x-3 gap-y-1 rounded-lg border px-4 py-3.5 text-sm has-[>svg]:grid-cols-[auto_minmax(0,1fr)] *:[svg]:row-span-3 *:[svg]:mt-0.5 *:[svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        info: "border-border bg-card text-foreground *:[svg]:text-muted-foreground",
+        info: "border-border bg-card text-foreground *:[svg]:text-primary",
         danger: "border-shortage-line bg-shortage-soft text-foreground *:[svg]:text-shortage",
         warning: "border-caution-line bg-caution-soft text-foreground *:[svg]:text-caution-mark",
         success: "border-ok-line bg-ok-soft text-foreground *:[svg]:text-ok",
