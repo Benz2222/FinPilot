@@ -15,7 +15,7 @@ Nguồn: `FinPilot_MVP_Project_Plan.xlsm` (Sprint Plan, Backlog, Setup Checklist
 
 ## Backlog và trạng thái
 
-Trạng thái đối chiếu với code ngày 2026-10-22. File plan trên Drive vẫn ghi tất cả "Not Started"; nên cập nhật theo bảng này.
+Trạng thái đối chiếu với code ngày 2026-10-23. File plan trên Drive vẫn ghi tất cả "Not Started"; nên cập nhật theo bảng này.
 
 | ID | Việc | Trạng thái |
 |---|---|---|
@@ -23,16 +23,16 @@ Trạng thái đối chiếu với code ngày 2026-10-22. File plan trên Drive 
 | F02 | Quy tắc ngày chốt, thanh toán một phần, quá hạn | Xong trên giấy (spec); engine đã xử lý quá hạn |
 | F03 | Wireframe | Chưa có file riêng; 4 màn hình demo đã dựng (Lịch thu–chi, Dự báo, Kịch bản, Nhập từ file) |
 | F04 | Repo, .NET 10, React/Vite/TS, CI | Xong |
-| F05 | Identity + thiết kế 9 bảng | Một phần: SQL tham chiếu đủ 9 bảng; migration mới có Identity + `shops` |
+| F05 | Identity + thiết kế 9 bảng | Xong: migration `ServerShopPersistence`; khác biệt so với SQL tham chiếu ghi ở [database/README.md](../database/README.md) |
 | F06 | Ca tham chiếu, mẫu CSV/XLSX | Xong: ca tham chiếu đã thành test; mẫu CSV/XLSX tải từ `GET /api/import/template` |
-| F07 | Đăng nhập cookie, sở hữu shop | Một phần: endpoint Identity cookie; chưa có CSRF, chưa gắn shop |
-| F08 | UI đăng nhập, tạo shop | Chưa |
-| F09–F11 | Snapshot, nghĩa vụ, form lưu dữ liệu | Một phần: demo lưu số dư và khoản thu–chi trong trình duyệt (localStorage); chưa lưu ở server |
+| F07 | Đăng nhập cookie, sở hữu shop | Xong: cookie HttpOnly, CSRF cho mọi thao tác ghi, mỗi tài khoản một shop |
+| F08 | UI đăng nhập, tạo shop | Xong: đăng nhập, đăng ký, quên/đặt lại mật khẩu qua email, tạo shop, đăng xuất |
+| F09–F11 | Snapshot, nghĩa vụ, form lưu dữ liệu | Xong: lưu ở server (PostgreSQL) |
 | F12 | Engine dự báo C# thuần + test | Xong: `CashForecaster`, 6 test nghiệm thu |
 | F13 | API dự báo + biểu đồ | Một phần: `POST /api/forecast/preview` không lưu trạng thái, biểu đồ và bảng 56 ngày |
-| F14–F20 | Thanh toán thực tế, VOID, audit, import | Một phần: thanh toán một phần, hủy khoản và import CSV/XLSX (xem trước, lỗi theo dòng, chặn nhập lại cùng file) chạy trong demo; chưa có audit |
-| F21–F25 | Kịch bản và so sánh | Một phần: tạo, lưu (trong trình duyệt), so sánh nhiều kịch bản với hiện tại, báo cần tính lại khi dữ liệu đổi; chưa lưu ở server |
-| F26–F31 | Bảo mật, QA, triển khai, sao lưu | Chưa |
+| F14–F20 | Thanh toán thực tế, VOID, audit, import | Xong: thanh toán một phần, VOID, audit log, import CSV/XLSX commit nguyên tử, chặn nhập lại cùng file |
+| F21–F25 | Kịch bản và so sánh | Xong: tạo, lưu ở server, so sánh nhiều kịch bản với hiện tại, báo cần tính lại khi dữ liệu đổi |
+| F26–F31 | Bảo mật, QA, triển khai, sao lưu | Một phần: test tích hợp cách ly shop và CSRF trên PostgreSQL thật; chưa có Playwright trong repo, triển khai HTTPS, sao lưu/khôi phục |
 | F32–F37 | Pilot, sửa lỗi, release, roadmap | Chưa |
 
 Ngoài backlog: trang landing tĩnh `landing/index.html`.

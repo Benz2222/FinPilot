@@ -1,7 +1,6 @@
 import { createContext, use } from 'react'
 import type { ApiError } from '@/lib/api'
-import type { ShopData } from '@/lib/shop'
-import type { ShopRepository } from '@/lib/store/repository'
+import type { Shop, ShopRepository } from '@/lib/store/repository'
 import type { ForecastRequest, ForecastResponse } from '@/lib/types'
 
 export interface Forecast {
@@ -10,13 +9,17 @@ export interface Forecast {
 }
 
 export interface ShopContextValue {
-  data: ShopData | null
+  data: Shop | null
+  /** The account has no shop yet: the app asks for its name. */
+  noShop: boolean
   loadError: string | null
+  reload: () => void
+  createShop: (name: string) => Promise<void>
   /** Last failed write, shown until the next successful one. */
   saveError: string | null
   repository: ShopRepository
   /** Runs a repository write and adopts the shop it returns. Rethrows non-storage errors to the caller. */
-  write: (action: (repo: ShopRepository) => Promise<ShopData>) => Promise<boolean>
+  write: (action: (repo: ShopRepository) => Promise<Shop>) => Promise<boolean>
   today: string
   baseline: ForecastRequest | null
   baselineFingerprint: string

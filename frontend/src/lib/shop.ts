@@ -168,9 +168,13 @@ export function scenarioRequest(base: ForecastRequest, adjustments: readonly Adj
   return { ...base, events: applyAdjustments(base.events, adjustments) }
 }
 
-/** Stable short hash of the real data a forecast depends on; a scenario whose fingerprint differs is stale. */
+/**
+ * Stable short hash of the real data a forecast depends on; a scenario whose fingerprint differs is stale.
+ * Events are sorted first: the order the server lists obligations in does not change any balance.
+ */
 export function fingerprint(request: ForecastRequest | null): string {
-  const text = JSON.stringify(request)
+  const sorted = request && { ...request, events: [...request.events].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)) }
+  const text = JSON.stringify(sorted)
   let h = 0x811c9dc5
   for (let i = 0; i < text.length; i += 1) {
     h ^= text.charCodeAt(i)

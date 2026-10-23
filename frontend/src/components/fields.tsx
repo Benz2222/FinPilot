@@ -1,37 +1,54 @@
 import type { ComponentProps, ReactNode } from 'react'
 import { ArrowDownLeft, ArrowUpRight } from 'lucide-react'
+import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { Direction } from '@/lib/types'
 
 export function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null
   return (
-    <p id={id} className="mt-1 text-xs font-medium text-destructive">
+    <p id={id} className="mt-1.5 text-[0.8125rem] text-destructive">
       {message}
     </p>
   )
 }
 
-export function TextField({
-  id,
-  error,
-  className,
-  ...props
-}: ComponentProps<'input'> & { id: string; error?: string }) {
+export function FieldLabel({ className, ...props }: ComponentProps<'label'>) {
+  return <label className={cn('mb-1.5 block text-sm font-medium text-secondary-foreground', className)} {...props} />
+}
+
+/** Label, control and its error message, wired by id. */
+export function Field({ id, label, error, hint, children, className }: { id: string; label: ReactNode; error?: string; hint?: ReactNode; children: ReactNode; className?: string }) {
+  return (
+    <div className={cn('min-w-0', className)}>
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+      {children}
+      {hint && !error && <p className="mt-1.5 text-[0.8125rem] text-muted-foreground">{hint}</p>}
+      <FieldError id={`${id}-error`} message={error} />
+    </div>
+  )
+}
+
+/** Text input that marks itself invalid and points at its error message. */
+export function TextField({ id, error, ...props }: ComponentProps<'input'> & { id: string; error?: string }) {
   return (
     <>
-      <input
-        id={id}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${id}-error` : undefined}
-        className={cn(
-          'h-10 w-full min-w-0 rounded-md border border-input bg-card px-3 text-base text-ink shadow-[inset_0_1px_0_rgb(16_27_51/0.05)] outline-none placeholder:text-ink-3/80 focus-visible:border-magenta aria-invalid:border-destructive aria-invalid:bg-destructive/5',
-          className,
-        )}
-        {...props}
-      />
+      <Input id={id} aria-invalid={error ? true : undefined} aria-describedby={error ? `${id}-error` : undefined} {...props} />
       <FieldError id={`${id}-error`} message={error} />
     </>
+  )
+}
+
+/** Native date input styled like the other controls. */
+export function DateInput({ invalid, describedBy, className, ...props }: Omit<ComponentProps<'input'>, 'type'> & { invalid?: boolean; describedBy?: string }) {
+  return (
+    <Input
+      type="date"
+      aria-invalid={invalid || undefined}
+      aria-describedby={invalid ? describedBy : undefined}
+      className={cn('num', className)}
+      {...props}
+    />
   )
 }
 
@@ -50,13 +67,13 @@ export function DirectionToggle({
   legend: ReactNode
 }) {
   const options: { value: Direction; label: string; icon: ReactNode; on: string }[] = [
-    { value: 'Out', label: 'Chi ra', icon: <ArrowUpRight aria-hidden="true" className="size-4" />, on: 'peer-checked:bg-ink peer-checked:text-paper peer-checked:border-ink' },
-    { value: 'In', label: 'Thu về', icon: <ArrowDownLeft aria-hidden="true" className="size-4" />, on: 'peer-checked:bg-jade peer-checked:text-white peer-checked:border-jade' },
+    { value: 'Out', label: 'Chi ra', icon: <ArrowUpRight aria-hidden="true" className="size-4" />, on: 'peer-checked:bg-card peer-checked:text-foreground peer-checked:shadow-sm peer-checked:ring-1 peer-checked:ring-border' },
+    { value: 'In', label: 'Thu về', icon: <ArrowDownLeft aria-hidden="true" className="size-4" />, on: 'peer-checked:bg-card peer-checked:text-ok peer-checked:shadow-sm peer-checked:ring-1 peer-checked:ring-border' },
   ]
   return (
     <fieldset aria-describedby={error ? `${name}-error` : undefined}>
       <legend className="sr-only">{legend}</legend>
-      <div className="inline-flex rounded-lg border border-input bg-card p-0.5">
+      <div className="inline-flex rounded-lg bg-muted p-1">
         {options.map((o) => (
           <label key={o.value} className="relative">
             <input
@@ -69,7 +86,7 @@ export function DirectionToggle({
               className="peer absolute inset-0 opacity-0"
             />
             <span
-              className={`flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-transparent px-3 text-sm font-semibold text-ink-2 peer-focus-visible:outline-3 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-magenta ${o.on}`}
+              className={`flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-3 text-sm font-medium text-muted-foreground peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-ring ${o.on}`}
             >
               {o.icon}
               {o.label}

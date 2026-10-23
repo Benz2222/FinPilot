@@ -54,8 +54,8 @@ function ZeroSplitGradients() {
         <stop offset={offset} stopColor="var(--shortage)" />
       </linearGradient>
       <linearGradient id={FILL_GRADIENT} {...vertical}>
-        <stop offset={offset} stopColor="var(--balance)" stopOpacity={0.12} />
-        <stop offset={offset} stopColor="var(--shortage)" stopOpacity={0.2} />
+        <stop offset={offset} stopColor="var(--balance)" stopOpacity={0.08} />
+        <stop offset={offset} stopColor="var(--shortage)" stopOpacity={0.14} />
       </linearGradient>
     </defs>
   )
@@ -72,7 +72,7 @@ function RiskDiamond({ cx = 0, cy = 0 }: DotShapeProps) {
   return (
     <path
       d={`M${cx} ${cy - r} L${cx + r} ${cy} L${cx} ${cy + r} L${cx - r} ${cy} Z`}
-      fill="var(--caution)"
+      fill="var(--caution-mark)"
       stroke="var(--card)"
       strokeWidth={2}
       strokeLinejoin="round"
@@ -109,16 +109,16 @@ function ChartTooltip({ active, payload, eventsById }: ChartTooltipProps) {
   const events = day.eventIds.map((id) => eventsById.get(id)).filter((e): e is CashEvent => Boolean(e))
 
   return (
-    <div className="w-64 max-w-[calc(100vw-2rem)] rounded-lg border bg-popover p-3 text-xs text-popover-foreground shadow-md">
+    <div className="w-64 max-w-[calc(100vw-2rem)] rounded-lg border bg-popover p-3 text-xs text-popover-foreground shadow-lg">
       <p className="text-muted-foreground">
         {formatWeekday(day.date)}, {formatDate(day.date)} · Ngày {index}
       </p>
       <p className="mt-1.5 text-muted-foreground">Số dư cuối ngày</p>
-      <p className={`text-base font-semibold whitespace-nowrap tabular-nums ${negative ? 'text-shortage' : ''}`}>
+      <p className={`num text-base font-semibold whitespace-nowrap ${negative ? 'text-shortage' : ''}`}>
         {formatVnd(day.closing)}
         {negative && <span className="ml-2 text-xs font-medium">Thiếu tiền</span>}
       </p>
-      <dl className="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 tabular-nums">
+      <dl className="num mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5">
         <dt className="text-muted-foreground">Đầu ngày</dt>
         <dd className="text-right whitespace-nowrap">{formatVnd(day.opening)}</dd>
         {!isZero(day.inflow) && (
@@ -139,9 +139,9 @@ function ChartTooltip({ active, payload, eventsById }: ChartTooltipProps) {
           {events.map((e) => (
             <li key={e.id} className="flex items-center gap-1.5">
               {e.direction === 'In' ? (
-                <ArrowDownLeft aria-label="Thu" className="size-3 shrink-0 text-(--balance)" />
+                <ArrowDownLeft aria-label="Thu" className="size-3 shrink-0 text-ok" />
               ) : (
-                <ArrowUpRight aria-label="Chi" className="size-3 shrink-0 text-(--shortage)" />
+                <ArrowUpRight aria-label="Chi" className="size-3 shrink-0 text-muted-foreground" />
               )}
               <span className="min-w-0 flex-1 truncate">{e.label}</span>
             </li>
@@ -149,7 +149,7 @@ function ChartTooltip({ active, payload, eventsById }: ChartTooltipProps) {
         </ul>
       )}
       {day.hasIntradayTimingRisk && (
-        <p className="mt-2 flex gap-1.5 border-t pt-2 text-(--caution)">
+        <p className="mt-2 flex gap-1.5 border-t pt-2 text-caution">
           <TriangleAlert aria-hidden="true" className="mt-px size-3.5 shrink-0" />
           {INTRADAY_RISK_NOTE}
         </p>
@@ -213,7 +213,7 @@ export function BalanceChart({ result, events }: BalanceChartProps) {
         {formatDate(result.lowestBalanceDate)}. Xem bảng chi tiết từng ngày bên dưới để đọc đủ số liệu.
       </p>
 
-      <ul className="mb-3 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-muted-foreground">
+      <ul className="mb-4 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-muted-foreground">
         <LegendItem mark={<path d="M1 8h14" stroke="var(--balance)" strokeWidth="2" strokeLinecap="round" />}>
           Số dư cuối ngày
         </LegendItem>
@@ -229,7 +229,7 @@ export function BalanceChart({ result, events }: BalanceChartProps) {
         </LegendItem>
         {riskDays.length > 0 && (
           <LegendItem
-            mark={<path d="M8 1 L15 8 L8 15 L1 8 Z" fill="var(--caution)" stroke="var(--card)" strokeWidth="1" />}
+            mark={<path d="M8 1 L15 8 L8 15 L1 8 Z" fill="var(--caution-mark)" stroke="var(--card)" strokeWidth="1" />}
           >
             Thu và chi cùng ngày
           </LegendItem>
@@ -240,7 +240,7 @@ export function BalanceChart({ result, events }: BalanceChartProps) {
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 12, right: 12, bottom: 0, left: 0 }}>
             <ZeroSplitGradients />
-            <CartesianGrid vertical={false} stroke="var(--border)" />
+            <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 3" />
             <XAxis
               dataKey="date"
               ticks={ticks}
@@ -261,7 +261,7 @@ export function BalanceChart({ result, events }: BalanceChartProps) {
               axisLine={false}
               tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
             />
-            <ReferenceLine y={0} stroke="var(--foreground)" strokeOpacity={0.6} strokeWidth={1.5} />
+            <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeWidth={1} />
             <Tooltip
               content={<ChartTooltip eventsById={eventsById} />}
               cursor={{ stroke: 'var(--foreground)', strokeOpacity: 0.25 }}

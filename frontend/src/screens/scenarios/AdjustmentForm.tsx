@@ -1,7 +1,8 @@
 import { useId, useState } from 'react'
-import type { FormEvent, ReactNode } from 'react'
+import type { FormEvent } from 'react'
 import { MoneyInput } from '@/components/MoneyInput'
-import { FieldError, TextField } from '@/components/fields'
+import { DateInput, Field, TextField } from '@/components/fields'
+import { Button } from '@/components/ui/button'
 import { formatDayMonth, isValidIsoDate } from '@/lib/date'
 import { newId } from '@/lib/id'
 import { compareMoney, formatVnd, isZero, subtractMoney } from '@/lib/money'
@@ -10,19 +11,8 @@ import type { CashEvent } from '@/lib/types'
 import type { PresetId } from './describe'
 import { PRESETS } from './describe'
 
-const control = 'h-10 w-full rounded-md border border-input bg-card px-3 text-base aria-invalid:border-destructive'
-
-function Field({ id, label, error, children }: { id: string; label: string; error?: string; children: ReactNode }) {
-  return (
-    <div className="min-w-0">
-      <label htmlFor={id} className="mb-1 block text-xs font-semibold">
-        {label}
-      </label>
-      {children}
-      <FieldError id={`${id}-error`} message={error} />
-    </div>
-  )
-}
+const select =
+  'h-10 w-full min-w-0 rounded-md border border-input bg-card px-3 text-base text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20 aria-invalid:border-destructive sm:text-sm'
 
 /** Builds one adjustment of the chosen preset over the real schedule's open lines. */
 export function AdjustmentForm({
@@ -105,34 +95,34 @@ export function AdjustmentForm({
 
   if (preset !== 'add' && candidates.length === 0) {
     return (
-      <div className="rounded-lg bg-paper-2 p-4 text-sm">
+      <div className="rounded-lg border bg-muted/50 p-4 text-sm">
         <p>Lịch chưa có khoản {wantsIn ? 'thu' : preset === 'exclude' ? '' : 'chi'} nào còn mở để thử.</p>
-        <button type="button" onClick={onCancel} className="mt-2 font-semibold underline underline-offset-4">
+        <Button variant="link" onClick={onCancel} className="mt-1 h-auto p-0">
           Đóng
-        </button>
+        </Button>
       </div>
     )
   }
 
   return (
-    <form onSubmit={submit} noValidate className="grid gap-3 rounded-lg border-2 border-ink bg-card p-4" aria-label={title}>
-      <p className="font-display text-xl font-bold">{title}</p>
-      {initial && <p className="-mt-2 text-xs text-ink-3">Số gợi ý để bắt đầu; sửa tùy ý trước khi thêm.</p>}
+    <form onSubmit={submit} noValidate className="grid gap-3 rounded-lg border border-primary/30 bg-card p-4 shadow-xs" aria-label={title}>
+      <p className="text-sm font-semibold">{title}</p>
+      {initial && <p className="-mt-2 text-xs text-muted-foreground">Số gợi ý để bắt đầu; sửa tùy ý trước khi thêm.</p>}
       {preset === 'add' ? (
         <div className="grid gap-3 sm:grid-cols-2">
           <Field id={f('label')} label="Nội dung" error={shown.label}>
             <TextField id={f('label')} value={label} onChange={(e) => setLabel(e.target.value)} maxLength={200} {...invalid('label')} />
           </Field>
           <Field id={f('amount')} label="Số tiền" error={undefined}>
-            <MoneyInput id={f('amount')} value={amount} onValueChange={setAmount} error={shown.amount} className="h-10 bg-card" />
+            <MoneyInput id={f('amount')} value={amount} onValueChange={setAmount} error={shown.amount} />
           </Field>
           <Field id={f('date')} label="Ngày chi" error={shown.date}>
-            <input id={f('date')} type="date" min={start} value={date} onChange={(e) => setDate(e.target.value)} className={control} {...invalid('date')} />
+            <DateInput id={f('date')} min={start} value={date} onChange={(e) => setDate(e.target.value)} invalid={Boolean(shown.date)} describedBy={`${f('date')}-error`} />
           </Field>
         </div>
       ) : (
         <Field id={f('target')} label={wantsIn ? 'Khoản thu' : 'Khoản'} error={shown.target}>
-          <select id={f('target')} value={targetId} onChange={(e) => setTargetId(e.target.value)} className={control} {...invalid('target')}>
+          <select id={f('target')} value={targetId} onChange={(e) => setTargetId(e.target.value)} className={select} {...invalid('target')}>
             {candidates.map((e) => (
               <option key={e.id} value={e.id}>
                 {e.label} · {formatVnd(e.amount)} · {formatDayMonth(e.date)}
@@ -144,41 +134,39 @@ export function AdjustmentForm({
 
       {(preset === 'later' || preset === 'late-receipt') && (
         <Field id={f('date')} label={wantsIn ? 'Giả sử tiền về ngày' : 'Ngày chi mới'} error={shown.date}>
-          <input id={f('date')} type="date" value={date} onChange={(e) => setDate(e.target.value)} className={control} {...invalid('date')} />
+          <DateInput id={f('date')} value={date} onChange={(e) => setDate(e.target.value)} invalid={Boolean(shown.date)} describedBy={`${f('date')}-error`} />
         </Field>
       )}
       {preset === 'less' && (
         <Field id={f('amount')} label="Số tiền mới" error={undefined}>
-          <MoneyInput id={f('amount')} value={amount} onValueChange={setAmount} error={shown.amount} className="h-10 bg-card" />
+          <MoneyInput id={f('amount')} value={amount} onValueChange={setAmount} error={shown.amount} />
         </Field>
       )}
       {preset === 'split' && target && (
         <div className="grid gap-3 sm:grid-cols-2">
           <Field id={f('amount')} label="Đợt 1: số tiền" error={undefined}>
-            <MoneyInput id={f('amount')} value={amount} onValueChange={setAmount} error={shown.amount} className="h-10 bg-card" />
+            <MoneyInput id={f('amount')} value={amount} onValueChange={setAmount} error={shown.amount} />
           </Field>
           <Field id={f('date')} label="Đợt 1: ngày" error={shown.date}>
-            <input id={f('date')} type="date" value={date} onChange={(e) => setDate(e.target.value)} className={control} {...invalid('date')} />
+            <DateInput id={f('date')} value={date} onChange={(e) => setDate(e.target.value)} invalid={Boolean(shown.date)} describedBy={`${f('date')}-error`} />
           </Field>
           <div className="min-w-0">
-            <p className="mb-1 text-xs font-semibold">Đợt 2: phần còn lại</p>
-            <p className="figure flex h-10 items-center rounded-md bg-paper-2 px-3 text-lg font-bold" aria-live="polite">
+            <p className="mb-1.5 text-sm font-medium text-secondary-foreground">Đợt 2: phần còn lại</p>
+            <p className="num flex h-10 items-center justify-end rounded-md bg-muted px-3 font-semibold" aria-live="polite">
               {rest ? formatVnd(rest) : '—'}
             </p>
           </div>
           <Field id={f('date2')} label="Đợt 2: ngày" error={shown.date2}>
-            <input id={f('date2')} type="date" value={date2} onChange={(e) => setDate2(e.target.value)} className={control} {...invalid('date2')} />
+            <DateInput id={f('date2')} value={date2} onChange={(e) => setDate2(e.target.value)} invalid={Boolean(shown.date2)} describedBy={`${f('date2')}-error`} />
           </Field>
         </div>
       )}
 
       <div className="flex flex-wrap gap-2">
-        <button type="submit" className="h-10 rounded-md bg-ink px-4 font-semibold text-paper">
-          Thêm giả định
-        </button>
-        <button type="button" onClick={onCancel} className="h-10 rounded-md px-3 font-medium hover:bg-paper-2">
+        <Button type="submit">Thêm giả định</Button>
+        <Button type="button" variant="ghost" onClick={onCancel}>
           Hủy
-        </button>
+        </Button>
       </div>
     </form>
   )

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { addDays } from './date'
 import { addMoney, subtractMoney } from './money'
-import { applyAdjustments, baselineRequest, emptyShop, remaining, scenarioRequest } from './shop'
+import { applyAdjustments, baselineRequest, emptyShop, fingerprint, remaining, scenarioRequest } from './shop'
 import type { Adjustment, Obligation, ShopData } from './shop'
 import type { ForecastRequest } from './types'
 
@@ -62,6 +62,12 @@ describe('baseline request', () => {
 })
 
 describe('scenarios', () => {
+  test('the order the server lists obligations in does not make a scenario stale', () => {
+    const data = referenceShop()
+    const reversed = { ...data, obligations: [...data.obligations].reverse() }
+    expect(fingerprint(baselineRequest(reversed))).toBe(fingerprint(baselineRequest(data)))
+  })
+
   test('adjustments leave the baseline data unchanged', () => {
     const data = referenceShop()
     const before = structuredClone(data)

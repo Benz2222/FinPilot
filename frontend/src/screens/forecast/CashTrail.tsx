@@ -41,33 +41,40 @@ export function CashTrail({ result, events }: { result: ForecastResponse; events
   const span = hasNegative ? 50 : 100
 
   return (
-    <ol className="grid gap-px overflow-hidden rounded-xl bg-ink/10 ring-1 ring-ink/10">
+    <ol className="divide-y">
+      <li aria-hidden="true" className="hidden grid-cols-[6rem_minmax(0,1fr)_minmax(0,12rem)_9.5rem] gap-x-4 bg-muted/60 px-5 py-2 text-xs font-medium text-muted-foreground sm:grid">
+        <span>Ngày</span>
+        <span>Khoản</span>
+        <span>Số dư sau khoản</span>
+        <span className="text-right">Còn lại</span>
+      </li>
       {steps.map((s, i) => {
         const v = values[i]
         const width = (Math.abs(v) / max) * span
         const negative = isNegative(s.balance)
         return (
-          <li key={s.key} className={`grid gap-x-4 gap-y-1 bg-card px-4 py-3 sm:grid-cols-[minmax(0,15rem)_minmax(0,1fr)_9.5rem] sm:items-center ${negative ? 'bg-[#fbeeec]' : ''}`}>
-            <div className="min-w-0">
-              <p className="text-xs text-ink-3">{formatDate(s.date)}</p>
-              <p className="font-semibold break-words">
-                {s.label}
-                {s.event && (
-                  <span className={`ml-2 figure font-bold whitespace-nowrap ${s.event.direction === 'In' ? 'text-jade' : 'text-ink-2'}`}>
-                    {s.event.direction === 'In' ? '+' : '−'}
-                    {formatVnd(s.event.amount)}
-                  </span>
-                )}
-              </p>
-            </div>
-            <div aria-hidden="true" className="relative h-3 rounded-sm bg-paper-2">
-              {hasNegative && <span className="absolute inset-y-[-4px] left-1/2 w-0.5 bg-ink" />}
+          <li
+            key={s.key}
+            className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 px-4 py-2.5 sm:grid-cols-[6rem_minmax(0,1fr)_minmax(0,12rem)_9.5rem] sm:px-5 ${negative ? 'bg-shortage-soft' : ''}`}
+          >
+            <p className="num col-span-full text-xs text-muted-foreground sm:col-span-1 sm:text-sm">{formatDate(s.date)}</p>
+            <p className="min-w-0 text-sm break-words">
+              <span className="font-medium">{s.label}</span>
+              {s.event && (
+                <span className={`num ml-2 whitespace-nowrap ${s.event.direction === 'In' ? 'text-ok' : 'text-muted-foreground'}`}>
+                  {s.event.direction === 'In' ? '+' : '−'}
+                  {formatVnd(s.event.amount)}
+                </span>
+              )}
+            </p>
+            <div aria-hidden="true" className="relative order-last col-span-full h-2 rounded-full bg-muted sm:order-none sm:col-span-1">
+              {hasNegative && <span className="absolute inset-y-[-3px] left-1/2 w-px bg-muted-foreground" />}
               <span
-                className={`absolute inset-y-0 rounded-sm ${negative ? 'hatch-shortage bg-destructive/70' : 'bg-[#1f5fa8]'}`}
+                className={`absolute inset-y-0 rounded-full ${negative ? 'bg-shortage' : 'bg-primary'}`}
                 style={negative ? { right: `${100 - zero}%`, width: `${width}%` } : { left: `${zero}%`, width: `${width}%` }}
               />
             </div>
-            <p className={`figure text-right text-xl font-bold whitespace-nowrap ${negative ? 'text-destructive' : ''}`}>
+            <p className={`num text-right text-sm font-semibold whitespace-nowrap ${negative ? 'text-shortage' : ''}`}>
               <span className="sr-only">Còn lại: </span>
               {formatVnd(s.balance)}
             </p>

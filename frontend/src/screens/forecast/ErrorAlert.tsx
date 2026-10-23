@@ -1,5 +1,5 @@
 import { CircleAlert } from 'lucide-react'
-import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import type { ApiError } from '@/lib/api'
 
@@ -72,9 +72,9 @@ export function ErrorAlert({ error, onRetry }: ErrorAlertProps) {
     .join(' · ')
 
   return (
-    <Alert variant="destructive" className="pr-24">
+    <Alert variant="danger" role="alert">
       <CircleAlert aria-hidden="true" />
-      <AlertTitle>{title}</AlertTitle>
+      <AlertTitle className="text-shortage">{title}</AlertTitle>
       <AlertDescription>
         {hint && <p>{hint}</p>}
         {fieldErrors.length > 0 && (
@@ -86,13 +86,11 @@ export function ErrorAlert({ error, onRetry }: ErrorAlertProps) {
             ))}
           </ul>
         )}
-        {technical && <p className="mt-2 text-xs break-words opacity-80">{technical}</p>}
-      </AlertDescription>
-      <AlertAction>
-        <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+        {technical && <p className="mt-2 text-xs break-words text-muted-foreground">{technical}</p>}
+        <Button type="button" variant="outline" size="sm" className="mt-3" onClick={onRetry}>
           Thử lại
         </Button>
-      </AlertAction>
+      </AlertDescription>
     </Alert>
   )
 }

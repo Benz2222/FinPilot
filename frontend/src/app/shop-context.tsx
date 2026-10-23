@@ -3,18 +3,19 @@ import type { ReactNode } from 'react'
 import { ApiError, previewForecast } from '@/lib/api'
 import { todayIso } from '@/lib/date'
 import { baselineRequest, fingerprint } from '@/lib/shop'
-import type { ShopData } from '@/lib/shop'
-import { createLocalRepository } from '@/lib/store/local'
-import { StoreError } from '@/lib/store/repository'
-import type { ShopRepository } from '@/lib/store/repository'
+import { createServerRepository } from '@/lib/store/server'
+import { NoShopError, StoreError } from '@/lib/store/repository'
+import type { Shop, ShopRepository } from '@/lib/store/repository'
 import type { ForecastRequest, ForecastResponse } from '@/lib/types'
 import { ShopContext } from './use-shop'
 import type { Forecast, ShopContextValue } from './use-shop'
 
 export function ShopProvider({ children, repository }: { children: ReactNode; repository?: ShopRepository }) {
-  const repo = useMemo(() => repository ?? createLocalRepository(), [repository])
-  const [data, setData] = useState<ShopData | null>(null)
+  const repo = useMemo(() => repository ?? createServerRepository(), [repository])
+  const [data, setData] = useState<Shop | null>(null)
+  const [noShop, setNoShop] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [saveError, setSaveError] = useState<string | null>(null)
   // Last settled engine call; loading and staleness are derived from it during render.
   const [settled, setSettled] = useState<{
@@ -28,11 +29,35 @@ export function ShopProvider({ children, repository }: { children: ReactNode; re
   const today = todayIso()
 
   useEffect(() => {
-    repo.load().then(setData, (e: unknown) => setLoadError(e instanceof Error ? e.message : String(e)))
-  }, [repo])
+    let live = true
+    repo.load().then(
+      (shop) => {
+        if (!live) return
+        setData(shop)
+        setNoShop(false)
+        setLoadError(null)
+      },
+      (e: unknown) => {
+        if (!live) return
+        if (e instanceof NoShopError) setNoShop(true)
+        else setLoadError(e instanceof Error ? e.message : String(e))
+      },
+    )
+    return () => {
+      live = false
+    }
+  }, [repo, loadAttempt])
+
+  const createShop = useCallback(
+    async (name: string) => {
+      setData(await repo.createShop(name))
+      setNoShop(false)
+    },
+    [repo],
+  )
 
   const write = useCallback(
-    async (action: (r: ShopRepository) => Promise<ShopData>) => {
+    async (action: (r: ShopRepository) => Promise<Shop>) => {
       try {
         setData(await action(repo))
         setSaveError(null)
@@ -76,7 +101,13 @@ export function ShopProvider({ children, repository }: { children: ReactNode; re
   const current = settled !== null && settled.request === baseline && settled.attempt === attempt
   const value: ShopContextValue = {
     data,
+    noShop,
     loadError,
+    reload: () => {
+      setLoadError(null)
+      setLoadAttempt((n) => n + 1)
+    },
+    createShop,
     saveError,
     repository: repo,
     write,

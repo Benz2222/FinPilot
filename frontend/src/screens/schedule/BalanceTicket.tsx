@@ -1,15 +1,34 @@
 import { useState } from 'react'
-import type { FormEvent } from 'react'
-import { PencilLine } from 'lucide-react'
+import type { FormEvent, ReactNode } from 'react'
+import { FileSpreadsheet, PencilLine, Sparkles } from 'lucide-react'
 import { useShop } from '@/app/use-shop'
 import { demoShop } from '@/lib/demo'
 import { MoneyInput } from '@/components/MoneyInput'
-import { FieldError } from '@/components/fields'
-import { addDays, formatDate, formatWeekday, isValidIsoDate } from '@/lib/date'
+import { DateInput, Field, FieldLabel } from '@/components/fields'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { addDays, formatDate, isValidIsoDate } from '@/lib/date'
 import { formatVnd } from '@/lib/money'
+import type { Money } from '@/lib/types'
 
-/** The confirmed closing balance, drawn as a stamped bank slip. Editing turns the slip into its own form. */
-export function BalanceTicket() {
+function Figure({ label, value, sub, tone, action }: { label: string; value: string; sub: string; tone?: 'ok'; action?: ReactNode }) {
+  return (
+    <div className="min-w-0 rounded-xl border bg-card p-4 shadow-[0_1px_2px_rgb(16_24_40/0.05)]">
+      <div className="flex items-start justify-between gap-2">
+        <dt className="text-[0.8125rem] font-medium text-muted-foreground">{label}</dt>
+        {action}
+      </div>
+      <dd className={`num mt-1.5 text-xl font-semibold tracking-tight break-all sm:text-2xl ${tone === 'ok' ? 'text-ok' : ''}`}>{value}</dd>
+      <dd className="mt-1 text-[0.8125rem] text-muted-foreground">{sub}</dd>
+    </div>
+  )
+}
+
+/**
+ * The confirmed closing balance next to what is still to come in and go out. Editing (or having no balance yet)
+ * turns it into the balance form.
+ */
+export function BalanceTicket({ totalIn, totalOut, countIn, countOut }: { totalIn: Money; totalOut: Money; countIn: number; countOut: number }) {
   const { data, write, today } = useShop()
   const balance = data?.balance ?? null
   const [editing, setEditing] = useState(false)
@@ -41,106 +60,91 @@ export function BalanceTicket() {
 
   if (!open && balance) {
     return (
-      <section aria-labelledby="balance-title" className="relative">
-        <div className="perforated relative overflow-hidden rounded-xl bg-ink px-5 pt-7 pb-5 text-paper shadow-[0_24px_60px_-30px_rgb(16_27_51/0.7)] sm:px-8">
-          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
-            <div className="min-w-0">
-              <h2 id="balance-title" className="eyebrow text-paper/75!">
-                Số dư đã xác nhận · cuối ngày {formatDate(balance.cutoff)}
-              </h2>
-              <p className="figure mt-1 text-5xl leading-none font-bold break-all sm:text-6xl">{formatVnd(balance.amount)}</p>
-              <p className="mt-3 max-w-xl text-sm text-paper/80">
-                Đã gồm mọi khoản thu/chi đến hết {formatWeekday(balance.cutoff).toLowerCase()} {formatDate(balance.cutoff)}. Dự báo
-                bắt đầu từ <strong className="text-paper">{formatDate(addDays(balance.cutoff, 1))}</strong>; khoản nào còn mở trước
-                ngày đó cần ngày mới.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={start}
-              className="inline-flex items-center gap-2 rounded-md border border-paper/40 px-3 py-2 text-sm font-semibold hover:bg-paper/10"
-            >
-              <PencilLine aria-hidden="true" className="size-4" />
-              Cập nhật số dư
-            </button>
-          </div>
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute top-4 right-5 hidden rotate-[-8deg] rounded border-2 border-[#ff6ab5]/70 px-2 py-0.5 font-display text-sm font-bold tracking-[0.2em] text-[#ff8cc4] uppercase sm:block"
-          >
-            Đã chốt {formatDate(balance.cutoff).slice(0, 5)}
-          </span>
-        </div>
+      <section aria-labelledby="balance-title" className="grid gap-2">
+        <h2 id="balance-title" className="sr-only">
+          Số dư và các khoản sắp tới
+        </h2>
+        <dl className="grid gap-3 sm:grid-cols-3">
+          <Figure
+            label="Số dư đã xác nhận"
+            value={formatVnd(balance.amount)}
+            sub={`Cuối ngày ${formatDate(balance.cutoff)}`}
+            action={
+              <Button variant="ghost" size="sm" className="-mt-1.5 -mr-2" onClick={start}>
+                <PencilLine aria-hidden="true" />
+                Cập nhật số dư
+              </Button>
+            }
+          />
+          <Figure label="Sắp thu" value={`+${formatVnd(totalIn)}`} sub={`${countIn} khoản còn mở`} tone="ok" />
+          <Figure label="Sắp chi" value={`−${formatVnd(totalOut)}`} sub={`${countOut} khoản còn mở`} />
+        </dl>
+        <p className="text-[0.8125rem] text-muted-foreground">
+          Số dư đã gồm mọi khoản thu/chi đến hết ngày {formatDate(balance.cutoff)}. Dự báo bắt đầu từ{' '}
+          <span className="num font-medium text-foreground">{formatDate(addDays(balance.cutoff, 1))}</span>; khoản nào còn mở trước ngày đó cần ngày mới.
+        </p>
       </section>
     )
   }
 
   return (
-    <section aria-labelledby="balance-form-title" className="rounded-xl border-2 border-dashed border-ink/30 bg-card p-5 sm:p-7">
-      <p className="eyebrow">{balance ? 'Cập nhật số dư' : 'Bắt đầu ở đây'}</p>
-      <h2 id="balance-form-title" className="mt-1 font-display text-3xl font-bold">
-        {balance ? 'Số dư đã xác nhận' : 'Nhập số dư hôm nay'}
-      </h2>
-      <p className="mt-2 max-w-2xl text-sm text-ink-2">
-        Cộng tiền ngân hàng và tiền mặt <strong>đã về</strong>, tính đến cuối ngày hôm qua (tức đầu ngày hôm nay). Không tính tiền sàn,
-        COD còn đang chờ: những khoản đó nhập ở dưới như khoản sắp thu.
-      </p>
-      <form onSubmit={submit} noValidate className="mt-5 grid gap-4 sm:grid-cols-[minmax(0,1fr)_12rem_auto] sm:items-start">
-        <div>
-          <label htmlFor="balance-amount" className="mb-1.5 block text-sm font-semibold">
-            Số dư cuối ngày chốt
-          </label>
-          <MoneyInput
-            id="balance-amount"
-            value={amount}
-            onValueChange={setAmount}
-            error={showErrors ? errors.amount : undefined}
-            placeholder="VD: 50.000.000"
-            className="h-12 bg-card text-xl font-semibold"
-          />
-        </div>
-        <div>
-          <label htmlFor="balance-cutoff" className="mb-1.5 block text-sm font-semibold">
-            Ngày chốt
-          </label>
-          <input
-            id="balance-cutoff"
-            type="date"
-            value={cutoff}
-            max={today}
-            onChange={(e) => setCutoff(e.target.value)}
-            aria-invalid={showErrors && errors.cutoff ? true : undefined}
-            aria-describedby={showErrors && errors.cutoff ? 'balance-cutoff-error' : undefined}
-            className="h-12 w-full rounded-md border border-input bg-card px-3 text-base aria-invalid:border-destructive"
-          />
-          <FieldError id="balance-cutoff-error" message={showErrors ? errors.cutoff : undefined} />
-        </div>
-        <div className="flex gap-2 sm:pt-7">
-          <button type="submit" className="h-12 rounded-md bg-ink px-5 font-semibold text-paper hover:bg-ink-2">
-            Lưu số dư
-          </button>
-          {balance && (
-            <button type="button" onClick={() => setEditing(false)} className="h-12 rounded-md px-3 font-medium text-ink-2 hover:bg-paper-2">
-              Hủy
-            </button>
-          )}
-        </div>
-      </form>
-      {!balance && (
-        <p className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-dashed border-ink/25 pt-4 text-sm text-ink-2">
-          Chưa sẵn số liệu?
-          <button
-            type="button"
-            onClick={() => void write((r) => r.replaceAll(demoShop(today)))}
-            className="rounded-md border border-ink/25 bg-paper px-3 py-1.5 font-semibold text-ink hover:border-ink"
-          >
-            Xem ví dụ shop mẫu
-          </button>
-          <a href="#nhap-file" className="rounded-md border border-ink/25 bg-paper px-3 py-1.5 font-semibold text-ink hover:border-ink">
-            Nhập từ file Excel/CSV
-          </a>
+    <Card>
+      <section aria-labelledby="balance-form-title" className="p-4 sm:p-6">
+        <h2 id="balance-form-title" className="text-base font-semibold">
+          {balance ? 'Cập nhật số dư đã xác nhận' : 'Bắt đầu: nhập số dư hôm nay'}
+        </h2>
+        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+          Cộng tiền ngân hàng và tiền mặt <strong className="font-medium text-foreground">đã về</strong>, tính đến cuối ngày hôm qua (tức đầu ngày hôm nay).
+          Không tính tiền sàn, COD còn đang chờ: những khoản đó nhập ở dưới như khoản sắp thu.
         </p>
-      )}
-    </section>
+        <form onSubmit={submit} noValidate className="mt-5 grid gap-4 sm:grid-cols-[minmax(0,1fr)_12rem_auto] sm:items-start">
+          <div className="min-w-0">
+            <FieldLabel htmlFor="balance-amount">Số dư cuối ngày chốt</FieldLabel>
+            <MoneyInput
+              id="balance-amount"
+              value={amount}
+              onValueChange={setAmount}
+              error={showErrors ? errors.amount : undefined}
+              placeholder="VD: 50.000.000"
+              className="h-11 text-base font-semibold"
+            />
+          </div>
+          <Field id="balance-cutoff" label="Ngày chốt" error={showErrors ? errors.cutoff : undefined}>
+            <DateInput
+              id="balance-cutoff"
+              value={cutoff}
+              max={today}
+              onChange={(e) => setCutoff(e.target.value)}
+              invalid={showErrors && Boolean(errors.cutoff)}
+              describedBy="balance-cutoff-error"
+              className="h-11"
+            />
+          </Field>
+          <div className="flex gap-2 sm:pt-7">
+            <Button type="submit" size="lg" className="flex-1 sm:flex-none">
+              Lưu số dư
+            </Button>
+            {balance && (
+              <Button type="button" variant="ghost" size="lg" onClick={() => setEditing(false)}>
+                Hủy
+              </Button>
+            )}
+          </div>
+        </form>
+        {!balance && (
+          <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 border-t pt-4 text-sm text-muted-foreground">
+            Chưa sẵn số liệu?
+            <Button type="button" variant="outline" size="sm" onClick={() => void write((r) => r.replaceAll(demoShop(today)))}>
+              <Sparkles aria-hidden="true" />
+              Xem ví dụ shop mẫu
+            </Button>
+            <a href="#nhap-file" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+              <FileSpreadsheet aria-hidden="true" />
+              Nhập từ file Excel/CSV
+            </a>
+          </div>
+        )}
+      </section>
+    </Card>
   )
 }

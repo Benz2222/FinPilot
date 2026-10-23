@@ -2,193 +2,97 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
-@import "@fontsource-variable/fraunces";
-@import "@fontsource/barlow-condensed/500.css";
-@import "@fontsource/barlow-condensed/600.css";
-@import "@fontsource/barlow-condensed/700.css";
-
-@custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    --font-heading: var(--font-display);
-    --font-sans: 'Inter Variable', system-ui, sans-serif;
-    --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
-    --font-serif: 'Fraunces Variable', Georgia, serif;
-    --color-paper: var(--paper);
-    --color-paper-2: var(--paper-2);
-    --color-paper-3: var(--paper-3);
-    --color-ink: var(--ink);
-    --color-ink-2: var(--ink-2);
-    --color-ink-3: var(--ink-3);
-    --color-magenta: var(--magenta);
-    --color-jade: var(--jade);
-    --color-night: var(--night);
-    --color-night-2: var(--night-2);
-    --color-hud: var(--hud);
-    --color-shortage: var(--shortage);
-    --color-caution: var(--caution);
-    --color-sidebar-ring: var(--sidebar-ring);
-    --color-sidebar-border: var(--sidebar-border);
-    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-    --color-sidebar-accent: var(--sidebar-accent);
-    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-    --color-sidebar-primary: var(--sidebar-primary);
-    --color-sidebar-foreground: var(--sidebar-foreground);
-    --color-sidebar: var(--sidebar);
-    --color-chart-5: var(--chart-5);
-    --color-chart-4: var(--chart-4);
-    --color-chart-3: var(--chart-3);
-    --color-chart-2: var(--chart-2);
-    --color-chart-1: var(--chart-1);
-    --color-ring: var(--ring);
-    --color-input: var(--input);
-    --color-border: var(--border);
-    --color-destructive: var(--destructive);
-    --color-accent-foreground: var(--accent-foreground);
-    --color-accent: var(--accent);
-    --color-muted-foreground: var(--muted-foreground);
-    --color-muted: var(--muted);
-    --color-secondary-foreground: var(--secondary-foreground);
-    --color-secondary: var(--secondary);
-    --color-primary-foreground: var(--primary-foreground);
-    --color-primary: var(--primary);
-    --color-popover-foreground: var(--popover-foreground);
-    --color-popover: var(--popover);
-    --color-card-foreground: var(--card-foreground);
-    --color-card: var(--card);
-    --color-foreground: var(--foreground);
+    --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-heading: var(--font-sans);
     --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary-soft: var(--primary-soft);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-balance: var(--balance);
+    --color-shortage: var(--shortage);
+    --color-shortage-soft: var(--shortage-soft);
+    --color-shortage-line: var(--shortage-line);
+    --color-caution: var(--caution);
+    --color-caution-soft: var(--caution-soft);
+    --color-caution-line: var(--caution-line);
+    --color-caution-mark: var(--caution-mark);
+    --color-ok: var(--ok);
+    --color-ok-soft: var(--ok-soft);
+    --color-ok-line: var(--ok-line);
     --radius-sm: calc(var(--radius) * 0.6);
     --radius-md: calc(var(--radius) * 0.8);
     --radius-lg: var(--radius);
     --radius-xl: calc(var(--radius) * 1.4);
-    --radius-2xl: calc(var(--radius) * 1.8);
-    --radius-3xl: calc(var(--radius) * 2.2);
-    --radius-4xl: calc(var(--radius) * 2.6);
 }
 
 :root {
-    /* Paper ledger palette, from the landing page. Every text pairing below meets WCAG AA on --paper/--card. */
-    --paper: #f3eee2;
-    --paper-2: #eae3d2;
-    --paper-3: #dcd2ba;
-    --ink: #101b33;
-    --ink-2: #2b3752;
-    --ink-3: #555e72;
-    --magenta: #b0246c;
-    --jade: #1b6e4e;
-    --night: #0a1020;
-    --night-2: #121b33;
-    --hud: #dce6ff;
-    --background: var(--paper);
-    --foreground: var(--ink);
-    --card: #fbf8f1;
-    --card-foreground: var(--ink);
-    --popover: #fbf8f1;
-    --popover-foreground: var(--ink);
-    --primary: var(--ink);
-    --primary-foreground: #fbf8f1;
-    --secondary: var(--paper-2);
-    --secondary-foreground: var(--ink);
-    --muted: var(--paper-2);
-    --muted-foreground: var(--ink-3);
-    --accent: var(--paper-2);
-    --accent-foreground: var(--ink);
-    --destructive: #b42a23;
-    --border: rgb(16 27 51 / 0.16);
-    --input: rgb(16 27 51 / 0.28);
-    --ring: var(--magenta);
-    --chart-1: var(--ink);
-    --chart-2: var(--magenta);
-    --chart-3: #1f5fa8;
-    --chart-4: #b86e0a;
-    --chart-5: var(--jade);
+    /* Neutral slate surfaces, one blue accent, and semantic red / amber / green. All text pairings meet WCAG AA on white and on --background. */
+    --background: #f6f7f9;
+    --foreground: #101828;
+    --card: #ffffff;
+    --card-foreground: var(--foreground);
+    --popover: #ffffff;
+    --popover-foreground: var(--foreground);
+    --primary: #2952cc;
+    --primary-foreground: #ffffff;
+    --primary-soft: #eef2fd;
+    --secondary: #f2f4f7;
+    --secondary-foreground: #344054;
+    --muted: #f2f4f7;
+    --muted-foreground: #5b6474;
+    --accent: #f2f4f7;
+    --accent-foreground: var(--foreground);
+    --destructive: #b42318;
+    --border: #e4e7ec;
+    --input: #d0d5dd;
+    --ring: #2952cc;
     --radius: 0.5rem;
-    --balance: #1f5fa8;
-    --shortage: #b42a23;
-    --caution: #e39a12;
-    --sidebar: var(--paper);
-    --sidebar-foreground: var(--ink);
-    --sidebar-primary: var(--ink);
-    --sidebar-primary-foreground: var(--paper);
-    --sidebar-accent: var(--paper-2);
-    --sidebar-accent-foreground: var(--ink);
-    --sidebar-border: var(--border);
-    --sidebar-ring: var(--magenta);
-    --ease-out-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
-}
 
-/* Night cockpit: re-points the tokens so charts and text inside read light-on-dark. */
-.cockpit {
-    --background: var(--night);
-    --foreground: var(--hud);
-    --card: var(--night);
-    --popover: #18223d;
-    --popover-foreground: var(--hud);
-    --muted-foreground: #a9b6d6;
-    --border: rgb(220 230 255 / 0.14);
-    --balance: #62d6ea;
-    --shortage: #ff7a72;
-    --caution: #ffb547;
-    --ring: #ff6ab5;
-    color: var(--hud);
-    background-color: var(--night);
-}
-
-.dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --balance: #3987e5;
-    --shortage: #e66767;
-    --caution: #fab219;
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    /* Money below zero, things that need care, things that are fine. */
+    --balance: var(--primary);
+    --shortage: #b42318;
+    --shortage-soft: #fef3f2;
+    --shortage-line: #fda29b;
+    --caution: #93370d;
+    --caution-soft: #fffaeb;
+    --caution-line: #fedf89;
+    --caution-mark: #f79009;
+    --ok: #067647;
+    --ok-soft: #ecfdf3;
+    --ok-line: #abefc6;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    }
-  body {
-    @apply bg-background text-foreground;
-    }
+  }
   html {
     @apply font-sans;
-    }
+    font-feature-settings: 'cv11', 'ss01';
+  }
   body {
-    @apply min-h-svh antialiased;
+    @apply min-h-svh bg-background text-foreground antialiased;
     overflow-x: clip;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .27 0 0 0 0 .16 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-    }
+  }
   :focus-visible {
-    outline: 3px solid var(--ring);
+    outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
   h1, h2, h3 {
@@ -197,47 +101,10 @@
 }
 
 @layer components {
-  .figure {
-    font-family: var(--font-display);
+  /* Money and dates: equal-width digits so columns line up. */
+  .num {
     font-variant-numeric: tabular-nums lining-nums;
-    letter-spacing: 0.01em;
   }
-  .eyebrow {
-    font-family: var(--font-display);
-    font-weight: 600;
-    font-size: 0.8rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--muted-foreground);
-  }
-  /* Ticket edge: a row of punched holes along the top. */
-  .perforated {
-    --hole: 7px;
-    -webkit-mask: radial-gradient(circle var(--hole) at var(--hole) 0, transparent 98%, #000) 0 0 / calc(var(--hole) * 3) 100% repeat-x;
-    mask: radial-gradient(circle var(--hole) at var(--hole) 0, transparent 98%, #000) 0 0 / calc(var(--hole) * 3) 100% repeat-x;
-  }
-  /* Receipt tear: zig-zag top and bottom. */
-  .receipt {
-    --tooth: 10px;
-    -webkit-mask:
-      conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / var(--tooth) 51% repeat-x,
-      conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / var(--tooth) 51% repeat-x;
-    mask:
-      conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / var(--tooth) 51% repeat-x,
-      conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / var(--tooth) 51% repeat-x;
-    padding-block: calc(var(--tooth) + 0.75rem);
-  }
-  .hatch-shortage {
-    background-image: repeating-linear-gradient(135deg, color-mix(in srgb, var(--shortage) 22%, transparent) 0 6px, transparent 6px 12px);
-  }
-  .rise-in {
-    animation: rise-in 420ms var(--ease-out-soft) both;
-  }
-}
-
-@keyframes rise-in {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -247,7 +114,4 @@
     transition-duration: 1ms !important;
     scroll-behavior: auto !important;
   }
-}
-.cockpit .recharts-area-curve {
-  filter: drop-shadow(0 0 6px rgb(98 214 234 / 0.45));
 }

@@ -42,7 +42,7 @@ dotnet run --project backend/src/FinPilot.Api --launch-profile http
 
 Thay `<same as .env>` bằng mật khẩu phát triển của bạn. User-secrets lưu ngoài repo; `appsettings.Development.json` chỉ chứa địa chỉ, database và username khớp `.env.example`, không chứa mật khẩu. Production cần cấp `ConnectionStrings__Default` qua cấu hình triển khai; thiếu chuỗi kết nối sẽ báo lỗi ngay khi khởi động.
 
-API chạy ở `http://localhost:5281`. `GET /api/health` trả `{"status":"ok"}` và không truy cập database. EF migrations quản lý schema; **không chạy đồng thời SQL tham chiếu** trong `database/reference/`. Migration đầu tiên tạo Identity và `finpilot.shops`; các bảng còn lại theo lộ trình trong [database/README.md](database/README.md).
+API chạy ở `http://localhost:5281`. `GET /api/health` trả `{"status":"ok"}` và không truy cập database. EF migrations quản lý schema; **không chạy đồng thời SQL tham chiếu** trong `database/reference/`. Migrations tạo Identity và các bảng dữ liệu shop, thanh toán, import, kịch bản và audit; chi tiết trong [database/README.md](database/README.md).
 
 ### 3. Frontend
 
@@ -60,6 +60,13 @@ Vite proxy chuyển `/api` đến `http://localhost:5281`, giúp frontend gọi 
 
 - `POST /api/forecast/preview`: nhận `ForecastInput`, trả `ForecastResult`; không yêu cầu đăng nhập và không truy cập database. Lỗi đầu vào trả `400 ValidationProblem`.
 - `/api/auth/*`: các endpoint Identity. Login luôn dùng cookie, kể cả khi client không gửi `useCookies=true`; `/api/auth/refresh` bị vô hiệu hóa. Client không cần lưu bearer token. Cookie là HttpOnly, SameSite Strict, Secure ngoài Development; lỗi xác thực/phân quyền trả 401/403.
+- `GET /api/csrf`: lấy `{ token }` và cookie antiforgery; gửi token trong header `X-CSRF-TOKEN` cho mọi POST/PUT/DELETE/PATCH dưới `/api`. Chỉ preview forecast, preview import và template được miễn. Login, register, forgotPassword và resetPassword cũng cần token. Lấy lại token sau login/logout.
+- `GET /api/auth/me`: `{ email }` hoặc 401; `POST /api/auth/logout`: đăng xuất cookie, trả 204.
+- `POST /api/auth/forgotPassword` `{ email }` và `POST /api/auth/resetPassword` `{ email, resetCode, newPassword }`: Identity gửi link khôi phục cho email đã xác nhận. Đăng ký gửi link xác nhận email; forgotPassword không tiết lộ tài khoản có tồn tại hay chưa.
+- `/api/shop`: tất cả yêu cầu đăng nhập. GET trả ShopData (version, balance, obligations với payments, scenarios, imports) cùng name/dataVersion; chưa tạo shop trả 404 ProblemDetails có type kết thúc `no-shop`. POST `{ name }` tạo shop duy nhất, trả 409 nếu đã có.
+- `PUT /api/shop/balance`, `PUT /api/shop/obligations/{id}`, `DELETE /api/shop/obligations/{id}`, `PUT /api/shop/scenarios/{id}`, `DELETE /api/shop/scenarios/{id}`: mỗi thao tác trả toàn bộ shop mới. ID nghĩa vụ/kịch bản là GUID client tạo. Thanh toán bị loại khỏi danh sách được VOID, lịch sử được giữ; tổng thanh toán không vượt số tiền nghĩa vụ. Kịch bản không sửa nghĩa vụ thực tế.
+- `POST /api/shop/imports` `{ fileSha256, fileName, obligations }`: commit nguyên tử; hash đã nhập trả 409 với `committedAt`. `PUT /api/shop/data` nhận ShopData để thay toàn bộ (demo/wipe); dữ liệu cũ được giữ theo quy tắc lịch sử và ghi audit.
+- `GET /api/import/template?format=xlsx|csv` và `POST /api/import/preview` (multipart trường file): xem trước stateless, không cần đăng nhập. Mẫu và parser hỗ trợ CSV/XLSX.
 - `GET /api/health`: kiểm tra tiến trình API.
 
 Ví dụ payload preview:
@@ -81,7 +88,23 @@ Ví dụ payload preview:
 }
 ```
 
-**F07:** bảo vệ CSRF cho các thao tác có cookie còn chờ triển khai, được đánh dấu trong `Program.cs`.
+### Email và khôi phục mật khẩu
+
+Cấu hình qua user-secrets trong Development hoặc biến môi trường khi triển khai; không đưa thông tin SMTP vào repo:
+
+| Khóa cấu hình | Biến môi trường | Ý nghĩa |
+| --- | --- | --- |
+| `App:PublicBaseUrl` | `App__PublicBaseUrl` | URL frontend công khai; HTTPS trong Production, Development mặc định http://localhost:5173 |
+| `Smtp:Host` | `Smtp__Host` | Máy chủ SMTP |
+| `Smtp:Port` | `Smtp__Port` | Cổng, mặc định 587 |
+| `Smtp:UseStartTls` | `Smtp__UseStartTls` | STARTTLS, mặc định true (không phải implicit TLS cổng 465) |
+| `Smtp:Username` | `Smtp__Username` | Tài khoản SMTP, bỏ trống nếu relay không cần đăng nhập |
+| `Smtp:Password` | `Smtp__Password` | Mật khẩu SMTP |
+| `Smtp:From` | `Smtp__From` | Địa chỉ người gửi |
+
+Ví dụ: `dotnet user-secrets set "Smtp:Host" "smtp.example.com" --project backend/src/FinPilot.Api`; thiết lập các khóa còn lại theo nhà cung cấp. Link khôi phục là `{App:PublicBaseUrl}/reset-password?email=...&code=...`; frontend gửi code đó dưới tên resetCode đến Identity.
+
+Thiếu Host/From hợp lệ trong Development: API cảnh báo và ghi link vào log thay vì gửi email. Log phát triển có token nhạy cảm. Production từ chối khởi động nếu SMTP hoặc PublicBaseUrl chưa cấu hình; cần kiểm tra gửi email với nhà cung cấp trước pilot. Identity chỉ gửi reset cho email đã xác nhận.
 
 ## Build và kiểm tra
 
@@ -92,7 +115,9 @@ npm --prefix frontend ci
 npm --prefix frontend run build
 ```
 
-CI chạy build/test backend và `npm ci` + build frontend với Node 22.
+Tùy chọn `FINPILOT_TEST_POSTGRES` trỏ tới PostgreSQL 17 riêng cho test (quyền CREATE DATABASE); suite tạo/xóa database tạm duy nhất. Nếu không đặt biến này, Testcontainers là mặc định.
+
+Toàn bộ test backend cần Docker đang chạy: Testcontainers tự tạo PostgreSQL 17 tạm và áp dụng EF migrations. CI Ubuntu dùng Docker có sẵn; đồng thời chạy `npm ci` + build frontend với Node 22.
 
 ## Hosting pilot cùng origin
 

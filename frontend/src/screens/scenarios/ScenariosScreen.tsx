@@ -1,8 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { ArrowRight, CircleCheck, Plus, RefreshCw, TriangleAlert, X } from 'lucide-react'
+import { ArrowRight, CircleCheck, MoreHorizontal, PencilLine, Plus, RefreshCw, Split, Trash2, TriangleAlert, X } from 'lucide-react'
 import { routeParams } from '@/app/routes'
 import { useShop } from '@/app/use-shop'
+import { EmptyState, PageHeader } from '@/components/page'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Input } from '@/components/ui/input'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@/components/ui/menu'
 import { ApiError, previewForecast } from '@/lib/api'
 import { addDays, diffDays, formatDayMonth } from '@/lib/date'
 import { explainShortage, inDays, relativeDay } from '@/lib/explain'
@@ -50,10 +58,11 @@ function useOutcome(request: ForecastRequest | null) {
 
 function Delta({ value, base }: { value: string; base: string }) {
   const d = subtractMoney(value, base)
-  if (isZero(d)) return <span className="text-xs text-ink-3">như hiện tại</span>
+  if (isZero(d)) return <span className="text-xs text-muted-foreground">như hiện tại</span>
+  const up = !isNegative(d)
   return (
-    <span className="text-xs font-semibold text-ink-2">
-      {isNegative(d) ? '▼ ' : '▲ '}
+    <span className={`num text-xs font-medium ${up ? 'text-ok' : 'text-shortage'}`}>
+      {up ? '▲ ' : '▼ '}
       {formatMoneyWords(d.replace(/^-/, ''))} so với hiện tại
     </span>
   )
@@ -68,27 +77,27 @@ interface Column {
 
 /** "Hiện tại" against every scenario, one column each, rows are what the owner decides on. States facts; ranks nothing. */
 function CompareTable({ columns, base, today }: { columns: Column[]; base: ScenarioOutcome | null; today: string }) {
-  const rowHead = 'sticky left-0 z-10 bg-paper px-3 py-3 text-left align-top text-xs font-semibold text-ink-3 sm:text-sm'
-  const cell = 'px-3 py-3 align-top'
+  const rowHead = 'sticky left-0 z-10 bg-card px-4 py-3 text-left align-top text-[0.8125rem] font-medium text-muted-foreground sm:px-5'
+  const money = 'num block font-semibold whitespace-nowrap'
   const rows: { label: string; render: (o: ScenarioOutcome, isBase: boolean) => ReactNode }[] = [
     {
       label: 'Kết quả',
       render: (o) =>
         o.firstShortageDate ? (
-          <span className="inline-flex items-center gap-1 font-bold text-destructive">
-            <TriangleAlert aria-hidden="true" className="size-4 shrink-0" /> Thiếu tiền
-          </span>
+          <Badge variant="danger">
+            <TriangleAlert aria-hidden="true" /> Thiếu tiền
+          </Badge>
         ) : (
-          <span className="inline-flex items-center gap-1 font-bold text-jade">
-            <CircleCheck aria-hidden="true" className="size-4 shrink-0" /> Không thiếu
-          </span>
+          <Badge variant="success">
+            <CircleCheck aria-hidden="true" /> Không thiếu
+          </Badge>
         ),
     },
     {
       label: 'Số dư thấp nhất',
       render: (o, isBase) => (
         <>
-          <span className={`figure block text-xl font-bold whitespace-nowrap ${isNegative(o.lowestBalance) ? 'text-destructive' : ''}`}>{formatVnd(o.lowestBalance)}</span>
+          <span className={`${money} ${isNegative(o.lowestBalance) ? 'text-shortage' : ''}`}>{formatVnd(o.lowestBalance)}</span>
           {!isBase && base && <Delta value={o.lowestBalance} base={base.lowestBalance} />}
         </>
       ),
@@ -98,50 +107,54 @@ function CompareTable({ columns, base, today }: { columns: Column[]; base: Scena
       render: (o) =>
         o.firstShortageDate ? (
           <>
-            <span className="figure block text-xl font-bold text-destructive">{formatDayMonth(o.firstShortageDate)}</span>
-            <span className="text-xs text-ink-3">{inDays(o.firstShortageDate, today)}</span>
+            <span className={`${money} text-shortage`}>{formatDayMonth(o.firstShortageDate)}</span>
+            <span className="text-xs text-muted-foreground">{inDays(o.firstShortageDate, today)}</span>
           </>
         ) : (
-          <span className="text-ink-3">Không có</span>
+          <span className="text-muted-foreground">Không có</span>
         ),
     },
     {
       label: 'Thiếu lớn nhất',
-      render: (o) => (
-        <span className={`figure text-xl font-bold whitespace-nowrap ${isZero(o.maxShortage) ? '' : 'text-destructive'}`}>{formatVnd(o.maxShortage)}</span>
-      ),
+      render: (o) => <span className={`${money} ${isZero(o.maxShortage) ? '' : 'text-shortage'}`}>{formatVnd(o.maxShortage)}</span>,
     },
     {
       label: 'Số dư ngày 56',
       render: (o, isBase) => (
         <>
-          <span className={`figure block text-xl font-bold whitespace-nowrap ${isNegative(o.endingBalance) ? 'text-destructive' : ''}`}>{formatVnd(o.endingBalance)}</span>
+          <span className={`${money} ${isNegative(o.endingBalance) ? 'text-shortage' : ''}`}>{formatVnd(o.endingBalance)}</span>
           {!isBase && base && <Delta value={o.endingBalance} base={base.endingBalance} />}
         </>
       ),
     },
   ]
   return (
-    <div role="region" aria-label="Bảng so sánh các kịch bản" tabIndex={0} className="overflow-x-auto rounded-xl ring-1 ring-ink/15 focus-visible:outline-3 focus-visible:outline-magenta">
+    <div role="region" aria-label="Bảng so sánh các kịch bản" tabIndex={0} className="overflow-x-auto focus-visible:-outline-offset-2">
       <table className="w-full border-collapse text-sm">
         <thead>
-          <tr className="border-b-2 border-ink">
-            <td className="sticky left-0 z-10 bg-paper" />
+          <tr className="border-y bg-muted/60">
+            <td className="sticky left-0 z-10 bg-muted px-4 sm:px-5" />
             {columns.map((c, i) => (
-              <th key={c.key} scope="col" className={`min-w-[8.5rem] px-3 py-3 text-left align-bottom ${i === 0 ? 'bg-paper-2' : ''}`}>
-                <span className="block font-display text-lg leading-tight font-bold break-words">{c.name}</span>
-                {c.stale && <span className="mt-0.5 inline-block rounded bg-[#fdf3df] px-1.5 text-xs font-bold text-[#7a4a00] ring-1 ring-[#e39a12]">Cần tính lại</span>}
+              <th key={c.key} scope="col" className={`min-w-[9.5rem] px-4 py-2.5 text-left align-bottom font-medium ${i === 0 ? 'bg-primary-soft' : ''}`}>
+                <span className="block break-words text-foreground">{c.name}</span>
+                {c.stale && (
+                  <Badge variant="warning" className="mt-1">
+                    Cần tính lại
+                  </Badge>
+                )}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.label} className="border-b border-ink/10 last:border-0">
-              <th scope="row" className={rowHead}>{r.label}</th>
+            <tr key={r.label} className="border-b last:border-0">
+              <th scope="row" className={rowHead}>
+                {r.label}
+              </th>
               {columns.map((c, i) => (
-                <td key={c.key} className={`${cell} ${i === 0 ? 'bg-paper-2' : 'bg-card'}`}>
-                  {c.outcome ? r.render(c.outcome, i === 0) : <span className="text-ink-3">Đang tính…</span>}
+                <td key={c.key} className={`px-4 py-3 align-top ${i === 0 ? 'bg-primary-soft/50' : ''}`}>
+                  {c.outcome ? r.render(c.outcome, i === 0) : <span className="text-muted-foreground">Đang tính…</span>}
                 </td>
               ))}
             </tr>
@@ -155,6 +168,9 @@ function CompareTable({ columns, base, today }: { columns: Column[]; base: Scena
 function shortageIndex(o: ScenarioOutcome): number | null {
   return o.firstShortageDate ? diffDays(o.start, o.firstShortageDate) : null
 }
+
+const DESCRIPTION =
+  'Thử trên giấy trước khi chi tiền thật: chia đợt, nhập muộn, nhập ít hơn, tiền về trễ. Kịch bản không sửa dữ liệu thật. App so sánh con số; chọn phương án nào là việc của bạn.'
 
 export function ScenariosScreen() {
   const { data, baseline, baselineFingerprint, forecast, write, today } = useShop()
@@ -204,27 +220,22 @@ export function ScenariosScreen() {
     return [Math.min(0, ...all), Math.max(1, ...all)]
   }, [base, scenarios, preview.outcome])
 
-  const heading = (
-    <header className="grid gap-2">
-      <h1 id="screen-title" tabIndex={-1} className="font-display text-4xl font-bold tracking-tight outline-none sm:text-5xl">
-        Mô phỏng kịch bản
-      </h1>
-      <p className="max-w-2xl text-ink-2">
-        Thử trên giấy trước khi chi tiền thật: chia đợt, nhập muộn, nhập ít hơn, tiền về trễ. Kịch bản không sửa dữ liệu thật. App
-        so sánh con số; chọn phương án nào là việc của bạn.
-      </p>
-    </header>
-  )
-
-  if (!data) return heading
+  if (!data) return <PageHeader title="Mô phỏng kịch bản" description={DESCRIPTION} />
   if (!data.balance || !baseline) {
     return (
-      <div className="grid gap-8">
-        {heading}
-        <p className="rounded-xl border-2 border-dashed border-ink/30 p-6">
-          Cần số dư đã xác nhận và lịch thu–chi trước.{' '}
-          <a href="#lich" className="font-semibold text-magenta underline underline-offset-4">Mở Lịch thu–chi</a>
-        </p>
+      <div className="grid gap-6">
+        <PageHeader title="Mô phỏng kịch bản" description={DESCRIPTION} />
+        <EmptyState
+          icon={<Split />}
+          title="Chưa có gì để so sánh"
+          action={
+            <a href="#lich" className={buttonVariants()}>
+              Mở Lịch thu–chi <ArrowRight aria-hidden="true" />
+            </a>
+          }
+        >
+          Cần số dư đã xác nhận và lịch thu–chi trước.
+        </EmptyState>
       </div>
     )
   }
@@ -266,22 +277,29 @@ export function ScenariosScreen() {
     }
   }
 
+  const deleting = scenarios.find((s) => s.id === confirmDelete) ?? null
+
   return (
-    <div className="grid gap-10">
-      {heading}
+    <div className="grid gap-6">
+      <PageHeader
+        title="Mô phỏng kịch bản"
+        description={DESCRIPTION}
+        actions={
+          <Button onClick={startNew}>
+            <Plus aria-hidden="true" /> Kịch bản mới
+          </Button>
+        }
+      />
 
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
-        <section aria-labelledby="board-title" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-0 lg:order-1">
-          <div className="flex flex-wrap items-end justify-between gap-3 border-b-2 border-ink pb-2">
-            <h2 id="board-title" className="font-display text-3xl font-bold">
-              Bảng so sánh
-            </h2>
-            <button type="button" onClick={startNew} className="inline-flex items-center gap-2 rounded-md bg-magenta px-4 py-2 font-semibold text-white hover:bg-[#951c5b]">
-              <Plus aria-hidden="true" className="size-4" /> Kịch bản mới
-            </button>
-          </div>
-
-          <div className="mt-4">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_23rem]">
+        <section aria-labelledby="board-title" className="grid min-w-0 gap-6">
+          <Card className="overflow-hidden">
+            <CardHeader className="pb-4 sm:pb-4">
+              <div>
+                <CardTitle id="board-title">Bảng so sánh</CardTitle>
+                <CardDescription>Hiện tại so với từng kịch bản đã lưu, trong cùng 56 ngày.</CardDescription>
+              </div>
+            </CardHeader>
             <CompareTable
               base={base}
               today={today}
@@ -290,122 +308,149 @@ export function ScenariosScreen() {
                 ...scenarios.map((s) => ({ key: s.id, name: s.name, outcome: s.outcome, stale: s.baseFingerprint !== baselineFingerprint })),
               ]}
             />
-          </div>
+          </Card>
 
-          <h3 className="mt-8 font-display text-2xl font-bold">Đường số dư và giả định</h3>
-          <ol className="mt-2 grid border-t-2 border-ink">
-            <li className="grid gap-3 border-b border-ink/15 bg-paper-2/60 px-3 py-5 sm:px-5">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h4 className="font-display text-xl font-bold">Hiện tại</h4>
-                <p className="text-sm text-ink-3">Dữ liệu thật trong Lịch thu–chi, không giả định gì thêm</p>
-              </div>
-              {base && <Sparkline closings={base.closings} domain={domain} shortageIndex={shortageIndex(base)} />}
-            </li>
-
-            {scenarios.map((s, i) => {
-              const stale = s.baseFingerprint !== baselineFingerprint
-              const broken = missingTargets(baseline.events, s.adjustments)
-              return (
-                <li key={s.id} className={`grid gap-3 border-b border-ink/15 px-3 py-5 sm:px-5 ${stale ? 'bg-[repeating-linear-gradient(135deg,transparent_0_10px,rgb(16_27_51/0.03)_10px_20px)]' : ''}`}>
+          <div className="grid gap-3">
+            <h3 className="text-base font-semibold">Đường số dư và giả định</h3>
+            <ol className="grid gap-3">
+              <li>
+                <Card className="grid gap-3 p-4 sm:p-5">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <h4 id={`scenario-${s.id}`} tabIndex={-1} className="font-display text-xl font-bold break-words outline-none">
-                      <span className="mr-2 font-mono text-sm text-ink-3">{String.fromCharCode(65 + (i % 26))}</span>
-                      {s.name}
-                    </h4>
-                    <div className="flex flex-wrap gap-x-1">
-                      <button type="button" className="rounded px-2 py-1 text-sm font-semibold hover:underline" onClick={() => { setDraft({ id: s.id, name: s.name, adjustments: s.adjustments }); setPreset(null) }}>
-                        Sửa<span className="sr-only"> {s.name}</span>
-                      </button>
-                      {confirmDelete === s.id ? (
-                        <button type="button" className="rounded bg-destructive px-2 py-1 text-sm font-semibold text-white" onBlur={() => setConfirmDelete(null)} onClick={() => void write((r) => r.deleteScenario(s.id))}>
-                          Bấm lần nữa để xóa
-                        </button>
-                      ) : (
-                        <button type="button" className="rounded px-2 py-1 text-sm font-semibold text-destructive hover:underline" onClick={() => setConfirmDelete(s.id)}>
-                          Xóa<span className="sr-only"> {s.name}</span>
-                        </button>
+                    <h4 className="font-semibold">Hiện tại</h4>
+                    <p className="text-[0.8125rem] text-muted-foreground">Dữ liệu thật trong Lịch thu–chi, không giả định gì thêm</p>
+                  </div>
+                  {base && <Sparkline closings={base.closings} domain={domain} shortageIndex={shortageIndex(base)} />}
+                </Card>
+              </li>
+
+              {scenarios.map((s, i) => {
+                const stale = s.baseFingerprint !== baselineFingerprint
+                const broken = missingTargets(baseline.events, s.adjustments)
+                return (
+                  <li key={s.id}>
+                    <Card className="grid gap-3 p-4 sm:p-5">
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 id={`scenario-${s.id}`} tabIndex={-1} className="flex min-w-0 items-center gap-2 font-semibold break-words outline-none">
+                          <span aria-hidden="true" className="grid size-6 shrink-0 place-items-center rounded-md bg-muted text-xs font-semibold text-muted-foreground">
+                            {String.fromCharCode(65 + (i % 26))}
+                          </span>
+                          {s.name}
+                        </h4>
+                        <Menu>
+                          <MenuTrigger asChild>
+                            <Button variant="ghost" size="icon-sm" className="-my-1" aria-label={`Thao tác với kịch bản “${s.name}”`}>
+                              <MoreHorizontal aria-hidden="true" />
+                            </Button>
+                          </MenuTrigger>
+                          <MenuContent>
+                            <MenuItem
+                              onSelect={() => {
+                                setDraft({ id: s.id, name: s.name, adjustments: s.adjustments })
+                                setPreset(null)
+                              }}
+                            >
+                              <PencilLine aria-hidden="true" />
+                              Sửa
+                            </MenuItem>
+                            <MenuSeparator />
+                            <MenuItem tone="danger" onSelect={() => setConfirmDelete(s.id)}>
+                              <Trash2 aria-hidden="true" />
+                              Xóa
+                            </MenuItem>
+                          </MenuContent>
+                        </Menu>
+                      </div>
+
+                      {stale && (
+                        <Alert variant="warning" role="status">
+                          <TriangleAlert aria-hidden="true" />
+                          <AlertDescription className="text-foreground">
+                            <p>Dữ liệu thật đã thay đổi sau khi tính kịch bản này. Số trong bảng và đường bên dưới là kết quả cũ.</p>
+                            <Button size="sm" variant="outline" className="mt-2" disabled={refreshing === s.id} onClick={() => void refresh(s)}>
+                              <RefreshCw aria-hidden="true" className={refreshing === s.id ? 'motion-safe:animate-spin' : undefined} />
+                              Tính lại với dữ liệu mới
+                            </Button>
+                            {refreshError === s.id && <p className="mt-1 font-medium text-shortage">Chưa tính lại được, thử lại sau.</p>}
+                          </AlertDescription>
+                        </Alert>
                       )}
-                    </div>
-                  </div>
 
-                  {stale && (
-                    <div role="status" className="flex flex-wrap items-center gap-3 rounded-lg border-2 border-[#e39a12] bg-[#fdf3df] px-3 py-2 text-sm text-[#5c3a00]">
-                      <TriangleAlert aria-hidden="true" className="size-4 shrink-0" />
-                      <span className="min-w-0 flex-1 basis-56">
-                        Dữ liệu thật đã thay đổi sau khi tính kịch bản này. Số trong bảng và đường bên dưới là kết quả cũ.
-                      </span>
-                      <button type="button" disabled={refreshing === s.id} onClick={() => void refresh(s)} className="inline-flex items-center gap-1.5 rounded-md bg-ink px-3 py-1.5 font-semibold text-paper disabled:opacity-60">
-                        <RefreshCw aria-hidden="true" className={`size-4 ${refreshing === s.id ? 'motion-safe:animate-spin' : ''}`} />
-                        Tính lại với dữ liệu mới
-                      </button>
-                      {refreshError === s.id && <span className="w-full font-semibold text-destructive">Chưa tính lại được, thử lại sau.</span>}
-                    </div>
-                  )}
+                      {s.outcome && (
+                        <div>
+                          {stale && <p className="mb-1 text-xs font-medium text-caution">Kết quả cũ</p>}
+                          <Sparkline closings={s.outcome.closings} domain={domain} shortageIndex={shortageIndex(s.outcome)} />
+                        </div>
+                      )}
 
-                  {s.outcome && (
-                    <div>
-                      {stale && <p className="mb-1 text-xs font-bold tracking-[0.08em] text-[#7a4a00] uppercase">Kết quả cũ</p>}
-                      <Sparkline closings={s.outcome.closings} domain={domain} shortageIndex={shortageIndex(s.outcome)} />
-                    </div>
-                  )}
+                      <div className="grid gap-x-6 gap-y-3 border-t pt-3 text-sm sm:grid-cols-2">
+                        <div>
+                          <p className="text-[0.8125rem] font-medium text-muted-foreground">Giả định</p>
+                          <ul className="mt-1 grid gap-1">
+                            {s.adjustments.map((a) => (
+                              <li key={a.id} className={broken.includes(a) ? 'font-medium text-shortage' : ''}>
+                                {describeAdjustment(a, byId)}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="text-[0.8125rem] font-medium text-muted-foreground">Cần cân nhắc</p>
+                          <ul className="mt-1 grid gap-1 text-secondary-foreground">
+                            {[...new Set(s.adjustments.map((a) => tradeOff(a, byId)))].map((t) => (
+                              <li key={t}>{t}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    </Card>
+                  </li>
+                )
+              })}
+            </ol>
 
-                  <div className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-                    <div>
-                      <p className="font-semibold">Giả định</p>
-                      <ul className="mt-1 grid gap-1 text-ink-2">
-                        {s.adjustments.map((a) => (
-                          <li key={a.id} className={broken.includes(a) ? 'font-semibold text-destructive' : ''}>
-                            {describeAdjustment(a, byId)}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <p className="font-semibold">Cần cân nhắc</p>
-                      <ul className="mt-1 grid gap-1 text-ink-2">
-                        {[...new Set(s.adjustments.map((a) => tradeOff(a, byId)))].map((t) => (
-                          <li key={t}>{t}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                </li>
-              )
-            })}
-          </ol>
-
-          {scenarios.length === 0 && !draft && (
-            <p className="mt-6 text-ink-2">
-              Chưa có kịch bản nào. Bấm <strong>Kịch bản mới</strong> rồi thêm một hoặc vài giả định, ví dụ chia khoản nhập hàng làm hai đợt.
-            </p>
-          )}
+            {scenarios.length === 0 && !draft && (
+              <p className="text-sm text-muted-foreground">
+                Chưa có kịch bản nào. Bấm <strong className="font-medium text-foreground">Kịch bản mới</strong> rồi thêm một hoặc vài giả định, ví dụ chia khoản
+                nhập hàng làm hai đợt.
+              </p>
+            )}
+          </div>
         </section>
 
-        <aside ref={builderRef} aria-labelledby="builder-title" className="lg:order-2">
+        <aside ref={builderRef} aria-labelledby="builder-title" className="lg:sticky lg:top-6">
           {draft ? (
-            <div className="grid gap-4 rounded-xl bg-card p-4 ring-1 ring-ink/15 shadow-[0_18px_40px_-28px_rgb(16_27_51/0.5)]">
+            <Card className="grid gap-4 p-4 sm:p-5">
               <div className="flex items-center justify-between gap-2">
-                <h2 id="builder-title" className="eyebrow">{draft.id ? 'Sửa kịch bản' : 'Kịch bản mới'}</h2>
-                <button type="button" onClick={() => setDraft(null)} className="rounded p-1 hover:bg-paper-2" aria-label="Đóng, không lưu">
-                  <X aria-hidden="true" className="size-4" />
-                </button>
+                <h2 id="builder-title" className="text-base font-semibold">
+                  {draft.id ? 'Sửa kịch bản' : 'Kịch bản mới'}
+                </h2>
+                <Button variant="ghost" size="icon-sm" onClick={() => setDraft(null)} aria-label="Đóng, không lưu">
+                  <X aria-hidden="true" />
+                </Button>
               </div>
               <div>
-                <label htmlFor="scenario-name" className="mb-1 block text-xs font-semibold">Tên kịch bản</label>
-                <input id="scenario-name" value={draft.name} maxLength={80} onChange={(e) => setDraft({ ...draft, name: e.target.value })} className="h-10 w-full rounded-md border border-input bg-card px-3 font-display text-xl font-bold" />
+                <label htmlFor="scenario-name" className="mb-1.5 block text-sm font-medium text-secondary-foreground">
+                  Tên kịch bản
+                </label>
+                <Input id="scenario-name" value={draft.name} maxLength={80} onChange={(e) => setDraft({ ...draft, name: e.target.value })} className="font-medium" />
               </div>
 
               <div>
-                <p className="text-xs font-semibold">Giả định ({draft.adjustments.length})</p>
+                <p className="text-sm font-medium text-secondary-foreground">Giả định ({draft.adjustments.length})</p>
                 {draft.adjustments.length === 0 ? (
-                  <p className="mt-1 text-sm text-ink-3">Chọn một kiểu thay đổi bên dưới.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Chọn một kiểu thay đổi bên dưới.</p>
                 ) : (
-                  <ol className="mt-1 grid gap-1.5">
+                  <ol className="mt-1.5 grid gap-1.5">
                     {draft.adjustments.map((a, i) => (
-                      <li key={a.id} className="flex items-start gap-2 rounded-md bg-paper-2 px-2.5 py-2 text-sm">
-                        <span className="font-mono text-xs text-ink-3">{i + 1}.</span>
+                      <li key={a.id} className="flex items-start gap-2 rounded-md border bg-muted/50 px-2.5 py-2 text-sm">
+                        <span className="num text-xs text-muted-foreground">{i + 1}.</span>
                         <span className="min-w-0 flex-1">{describeAdjustment(a, byId)}</span>
-                        <button type="button" aria-label={`Bỏ giả định ${i + 1}`} onClick={() => setDraft({ ...draft, adjustments: draft.adjustments.filter((x) => x.id !== a.id) })} className="rounded p-0.5 hover:bg-paper-3">
+                        <button
+                          type="button"
+                          aria-label={`Bỏ giả định ${i + 1}`}
+                          onClick={() => setDraft({ ...draft, adjustments: draft.adjustments.filter((x) => x.id !== a.id) })}
+                          className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        >
                           <X aria-hidden="true" className="size-4" />
                         </button>
                       </li>
@@ -435,9 +480,13 @@ export function ScenariosScreen() {
                 <ul className="grid grid-cols-2 gap-2">
                   {PRESETS.map((p) => (
                     <li key={p.id}>
-                      <button type="button" onClick={() => setPreset(p.id)} className="grid h-full w-full content-start gap-0.5 rounded-lg border border-ink/20 bg-paper px-3 py-2 text-left hover:border-ink hover:bg-card">
-                        <span className="font-display text-lg leading-tight font-bold">{p.title}</span>
-                        <span className="text-xs text-ink-3">{p.hint}</span>
+                      <button
+                        type="button"
+                        onClick={() => setPreset(p.id)}
+                        className="grid h-full w-full content-start gap-0.5 rounded-lg border bg-card px-3 py-2.5 text-left transition-colors hover:border-primary/40 hover:bg-primary-soft/60"
+                      >
+                        <span className="text-sm font-medium">{p.title}</span>
+                        <span className="text-xs text-muted-foreground">{p.hint}</span>
                       </button>
                     </li>
                   ))}
@@ -445,21 +494,29 @@ export function ScenariosScreen() {
               )}
 
               {draft.adjustments.length > 0 && (
-                <div className="grid gap-2 rounded-lg bg-paper-2/70 p-3" aria-live="polite">
-                  <p className="text-xs font-semibold tracking-[0.08em] text-ink-3 uppercase">Xem trước</p>
-                  {preview.loading && <p className="text-sm text-ink-3">Đang tính…</p>}
-                  {preview.error && <p className="text-sm font-semibold text-destructive">{preview.error}</p>}
+                <div className="grid gap-2 rounded-lg border bg-muted/40 p-3" aria-live="polite">
+                  <p className="text-xs font-medium text-muted-foreground">Xem trước</p>
+                  {preview.loading && <p className="text-sm text-muted-foreground">Đang tính…</p>}
+                  {preview.error && <p className="text-sm font-medium text-shortage">{preview.error}</p>}
                   {preview.outcome && !preview.loading && (
                     <>
                       <Sparkline closings={preview.outcome.closings} domain={domain} shortageIndex={shortageIndex(preview.outcome)} />
                       <p className="text-sm">
                         {preview.outcome.firstShortageDate ? (
-                          <>Vẫn thiếu <strong className="text-destructive">{formatMoneyWords(preview.outcome.maxShortage)}</strong>, bắt đầu {relativeDay(preview.outcome.firstShortageDate, today)}.</>
+                          <>
+                            Vẫn thiếu <strong className="font-semibold whitespace-nowrap text-shortage">{formatMoneyWords(preview.outcome.maxShortage)}</strong>, bắt đầu{' '}
+                            {relativeDay(preview.outcome.firstShortageDate, today)}.
+                          </>
                         ) : (
-                          <>Không ngày nào thiếu tiền. Thấp nhất còn <strong>{formatMoneyWords(preview.outcome.lowestBalance)}</strong>.</>
+                          <>
+                            Không ngày nào thiếu tiền. Thấp nhất còn <strong className="font-semibold whitespace-nowrap">{formatMoneyWords(preview.outcome.lowestBalance)}</strong>.
+                          </>
                         )}
                         {base && compareMoney(preview.outcome.lowestBalance, base.lowestBalance) !== 0 && (
-                          <> Số dư thấp nhất <Delta value={preview.outcome.lowestBalance} base={base.lowestBalance} />.</>
+                          <>
+                            {' '}
+                            Số dư thấp nhất <Delta value={preview.outcome.lowestBalance} base={base.lowestBalance} />.
+                          </>
                         )}
                       </p>
                     </>
@@ -467,27 +524,36 @@ export function ScenariosScreen() {
                 </div>
               )}
 
-              <button
-                type="button"
-                onClick={() => void saveDraft()}
-                disabled={!preview.outcome || preview.loading || draft.adjustments.length === 0 || !draft.name.trim()}
-                className="h-11 rounded-md bg-ink font-semibold text-paper disabled:cursor-not-allowed disabled:opacity-50"
-              >
+              <Button size="lg" onClick={() => void saveDraft()} disabled={!preview.outcome || preview.loading || draft.adjustments.length === 0 || !draft.name.trim()}>
                 Lưu kịch bản
-              </button>
-              {draft.adjustments.length === 0 && <p className="-mt-2 text-xs text-ink-3">Thêm ít nhất một giả định để lưu.</p>}
-            </div>
+              </Button>
+              {draft.adjustments.length === 0 && <p className="-mt-2 text-xs text-muted-foreground">Thêm ít nhất một giả định để lưu.</p>}
+            </Card>
           ) : (
-            <div className="grid gap-3 rounded-xl border-2 border-dashed border-ink/30 p-5">
-              <h2 id="builder-title" className="font-display text-2xl font-bold">Bàn thử</h2>
-              <p className="text-sm text-ink-2">Mỗi kịch bản là vài giả định đặt lên dữ liệu thật. Lịch thu–chi không bị sửa.</p>
-              <button type="button" onClick={startNew} className="inline-flex items-center justify-center gap-2 rounded-md bg-ink px-4 py-2.5 font-semibold text-paper">
-                Bắt đầu kịch bản mới <ArrowRight aria-hidden="true" className="size-4" />
-              </button>
-            </div>
+            <Card className="grid gap-3 p-4 sm:p-5">
+              <div aria-hidden="true" className="grid size-10 place-items-center rounded-lg bg-primary-soft text-primary">
+                <Split className="size-5" />
+              </div>
+              <h2 id="builder-title" className="text-base font-semibold">
+                Bàn thử
+              </h2>
+              <p className="text-sm text-muted-foreground">Mỗi kịch bản là vài giả định đặt lên dữ liệu thật. Lịch thu–chi không bị sửa.</p>
+              <Button variant="outline" onClick={startNew}>
+                Bắt đầu kịch bản mới <ArrowRight aria-hidden="true" />
+              </Button>
+            </Card>
           )}
         </aside>
       </div>
+
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(open) => !open && setConfirmDelete(null)}
+        title="Xóa kịch bản này?"
+        description={`Kịch bản “${deleting?.name ?? ''}” sẽ bị xóa. Lịch thu–chi không bị ảnh hưởng.`}
+        confirmLabel="Xóa kịch bản"
+        onConfirm={() => deleting && void write((r) => r.deleteScenario(deleting.id))}
+      />
     </div>
   )
 }

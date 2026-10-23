@@ -1,49 +1,46 @@
-# Thiết kế cơ sở dữ liệu FinPilot
+﻿# Cơ sở dữ liệu FinPilot
 
-`reference/finpilot_schema_postgresql.sql` là bản sao nguyên vẹn của thiết kế tham chiếu PostgreSQL cho MVP. **EF Core migrations là nguồn duy nhất quản lý schema của ứng dụng.** Không chạy trực tiếp SQL tham chiếu lên cơ sở dữ liệu đã dùng migrations.
+**EF Core migrations là nguồn duy nhất quản lý schema.** Không chạy `reference/finpilot_schema_postgresql.sql`; đó là thiết kế tham chiếu.
 
-Identity quản lý các bảng `AspNet*` trong schema `public`, với `AspNetUsers.Id` kiểu `text`. Chín bảng nghiệp vụ nằm trong schema `finpilot`; MVP có một chủ sở hữu cho mỗi shop và mỗi chủ sở hữu chỉ có một shop.
+Identity dùng các bảng `public.AspNet*` với khóa người dùng `text`. `finpilot.shops.owner_user_id` có UNIQUE: mỗi tài khoản sở hữu tối đa một shop. Người dùng tạo shop qua API sau đăng ký.
 
-## Lộ trình tạo bảng
+## Schema hiện có
 
-Tuần 1, F05: thiết kế đủ chín bảng và tạo nền tảng Identity. Migration `InitialIdentityAndShops` hiện tạo Identity và `shops` sớm để kiểm chứng khóa ngoại chủ sở hữu cùng các ràng buộc cơ bản.
+Migration `InitialIdentityAndShops` tạo Identity và shops. `ServerShopPersistence` bổ sung:
 
-| Bảng nghiệp vụ | Sprint / backlog triển khai |
+| Bảng | Dữ liệu và lịch sử |
 | --- | --- |
-| `shops` | Tuần 2, F09/F10; đã có trong migration nền tảng tuần 1 |
-| `balance_snapshots` | Tuần 2, F09/F10 |
-| `obligations` | Tuần 2, F09/F10 |
-| `cash_transactions` | Tuần 3, F14 |
-| `audit_logs` | Tuần 3, F16; cùng cập nhật `shops.data_version` |
-| `import_batches` | Tuần 3, F17/F18 |
-| `import_rows` | Tuần 3, F17/F18 |
-| `scenarios` | Tuần 4, F21/F22 |
-| `scenario_adjustments` | Tuần 4, F21/F22 |
+| `balance_snapshots` | Số dư cuối ngày; chỉ thêm, current_snapshot_id trỏ snapshot được xác nhận gần nhất |
+| `obligations` | Lịch thu/chi; cancelled giữ nguyên; xóa bằng removed_at |
+| `cash_transactions` | Thanh toán thực tế; sửa bằng VOID + bản ghi mới, không sửa số tiền/ngày hay xóa |
+| `import_batches` | Hash SHA-256 duy nhất theo shop; giữ lịch sử ngay cả sau thay thế/xóa dữ liệu |
+| `scenarios` | Payload, điều chỉnh và kết quả jsonb; bản chụp dữ liệu cơ sở và phiên bản |
+| `audit_logs` | Người thực hiện, thao tác, đối tượng, tóm tắt trước/sau, thời điểm UTC; chỉ thêm |
 
-View `obligation_balances` được bổ sung ở tuần 3 cùng `cash_transactions`, không phải bảng nghiệp vụ thứ mười. Khóa ngoại `shops.current_snapshot_id` được bổ sung khi có `balance_snapshots` ở tuần 2.
+Tiền dùng `numeric(18,0)`, ngày nghiệp vụ `date`, thời điểm `timestamptz` UTC. API từ chối phần lẻ trước khi PostgreSQL có thể làm tròn. View `obligation_balances` tính settled/remaining/outstanding từ thanh toán chưa VOID; không lưu tổng đã thanh toán lần thứ hai.
 
-## Quy tắc cần giữ khi chuyển sang migrations
+Khóa ngoại tổ hợp bảo vệ snapshot hiện tại, nguồn import và liên kết thanh toán–nghĩa vụ theo shop (cả hướng thu/chi). API xác định shop từ Identity, không nhận shopId từ client. Mỗi write khóa hàng shop bằng `FOR UPDATE`, kiểm tra dữ liệu mới nhất, ghi tất cả thay đổi, tăng data_version một lần và thêm audit trong cùng transaction. Read toàn shop dùng REPEATABLE READ. Hash import đã ghi không được commit lại; việc ẩn lịch sử khi wipe không xóa ràng buộc này.
 
-- Tiền VND dùng `decimal` / `numeric(18,0)`; API nhận và trả chuỗi JSON, từ chối phần lẻ trước khi PostgreSQL có thể làm tròn. Ngày nghiệp vụ dùng `DateOnly`, thời điểm kiểm toán dùng UTC.
-- Giữ khóa ngoại tổ hợp để chặn liên kết khác shop, hướng thu/chi không khớp và nguồn import không đúng loại. API vẫn phải kiểm tra quyền sở hữu shop.
-- Snapshot là số dư cuối ngày đã xác nhận; không tính lại giao dịch đã nằm trong snapshot. Số dư dự báo có thể âm.
-- Các ghi tài chính dùng cùng khóa shop trong một transaction; cập nhật phiên bản dữ liệu và audit trong transaction đó. Hủy giao dịch bằng VOID; không xóa lịch sử.
-- Scenario giữ baseline bất biến; import commit phải nguyên tử và có idempotency. Các CHECK, trigger, view và hợp đồng transaction chi tiết nằm trong SQL tham chiếu và phải được chuyển sang migration ở sprint tương ứng.
+## Khác biệt so với SQL tham chiếu
 
-## Lệnh EF Core
+- Không lưu preview/import_rows: preview vẫn stateless; commit nhận các dòng đã được người dùng chọn và kiểm tra lại toàn bộ. Source liên kết trực tiếp import_batches. UNIQUE(shop_id, file_sha256) thực thi hợp đồng chống nhập lại.
+- Điều chỉnh (bao gồm resize/split) và outcome nằm trong scenarios.payload_json, không có scenario_adjustments. Khi baseFingerprint đổi, API chụp lại baseline trên cùng scenario ID theo hợp đồng frontend; không dùng cây child scenario/baseline bất biến của thiết kế tham chiếu. Kết quả lưu là cache; phép tính dự báo chính thức dùng backend forecast API.
+- status dùng open/paid/cancelled theo API; paid bắt buộc có tổng thanh toán bằng amount. removed_at tách việc xóa khỏi việc hủy kế hoạch. Xóa nghĩa vụ hoặc wipe VOID các thanh toán bị loại khỏi dữ liệu hiện tại, vẫn giữ bản ghi cũ.
+- payment_id là ID client, id là ID bản ghi ledger. Sửa thanh toán VOID bản ghi cũ và thêm bản ghi mới với cùng payment_id; UNIQUE có điều kiện chỉ áp dụng cho bản ghi đang hoạt động. Không cho chuyển payment_id sang nghĩa vụ/shop khác.
+- Snapshot chỉ thêm và dùng con trỏ hiện tại; chưa có revision/supersedes, lý do hoặc xác nhận ack_snapshot_id. PUT balance xác nhận lại số dư cuối ngày; API hiện cho sửa cutoff và thanh toán trước cutoff theo hợp đồng ShopData. Không tự suy ra số dư bằng cách cộng lại thanh toán đã nằm trong snapshot.
+- Chưa có category/counterparty/external reference, parent scenario, purge policy, phân quyền DB runtime riêng hay RLS. Triển khai cần cấp role tối thiểu riêng cho runtime và migration; API vẫn chịu trách nhiệm cách ly người dùng.
 
-Chạy từ thư mục gốc sau khi cấu hình kết nối theo README chính:
+## Quản lý schema
+
+Từ thư mục gốc, cấu hình ConnectionStrings theo README chính:
 
 ```powershell
 dotnet tool restore
 dotnet ef migrations list --no-connect --project backend/src/FinPilot.Api
-```
-
-Để cập nhật schema trên **cơ sở dữ liệu phát triển của bạn**, chọn duy nhất đường triển khai EF:
-
-```powershell
 $env:ASPNETCORE_ENVIRONMENT = "Development"
 dotnet ef database update --project backend/src/FinPilot.Api
 ```
 
-Migration đầu tiên đã được kiểm chứng trên PostgreSQL phát triển cục bộ bằng EF; SQL tham chiếu không được áp dụng. Không có bước tự động áp dụng migration khi API khởi động.
+API không tự chạy migration khi khởi động. Design-time factory cho phép xem/tạo migration mà không cần cấu hình SMTP hoặc kết nối database khi dùng `--no-connect`.
+
+Kiểm thử API dùng Testcontainers với PostgreSQL 17 thật và áp dụng migrations trên database tạm, không dùng SQL tham chiếu hoặc EF InMemory. Cần Docker đang chạy để thực hiện toàn bộ `dotnet test backend/FinPilot.slnx`.

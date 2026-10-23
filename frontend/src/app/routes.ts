@@ -12,6 +12,14 @@ export function readRoute(): Route {
   return ROUTES.find((r) => r.id === hash)?.id ?? 'lich'
 }
 
+/** Screens shown before sign-in. Any other hash (e.g. `#du-bao`) shows login and is kept for after it. */
+export type AuthView = 'dang-nhap' | 'dang-ky' | 'quen-mat-khau'
+
+export function readAuthView(): AuthView {
+  const hash = window.location.hash.replace(/^#\/?/, '').split('?')[0]
+  return hash === 'dang-ky' || hash === 'quen-mat-khau' ? hash : 'dang-nhap'
+}
+
 /** `#kich-ban?chia=<id>` → `URLSearchParams` of the part after `?`. */
 export function routeParams(): URLSearchParams {
   return new URLSearchParams(window.location.hash.split('?')[1] ?? '')
