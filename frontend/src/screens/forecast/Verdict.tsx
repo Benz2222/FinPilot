@@ -63,7 +63,7 @@ export function Verdict({ result, story, today, splitTarget, updating = false, h
       </h2>
 
       {story && hasActions && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex min-w-0 flex-wrap gap-2">
           {splitTarget && (
             <Button variant="primary" href={splitScenarioHref(splitTarget.id)} label={`Thử chia đợt “${splitTarget.label}”`} endContent={<Icon icon={ArrowRight} />} />
           )}

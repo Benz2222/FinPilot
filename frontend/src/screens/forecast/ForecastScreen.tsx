@@ -121,8 +121,8 @@ export function ForecastScreen() {
 
         <StatGrid className={story ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}>
           <StatTile
-            label="Số dư thấp nhất"
-            value={formatVnd(result.lowestBalance)}
+            label={story ? 'Thiếu nhiều nhất' : 'Số dư thấp nhất'}
+            value={formatVnd(story ? result.maxShortage : result.lowestBalance)}
             negative={isNegative(result.lowestBalance)}
             sub={`${formatWeekday(result.lowestBalanceDate)} ${formatDayMonth(result.lowestBalanceDate)}`}
           />
@@ -131,7 +131,7 @@ export function ForecastScreen() {
         </StatGrid>
 
         <Panel title="Số dư cuối ngày" titleId="chart-title">
-          <BalanceChart result={result} events={request.events} />
+          <BalanceChart result={result} events={request.events} today={today} />
         </Panel>
       </section>
 
@@ -151,7 +151,7 @@ export function ForecastScreen() {
         </Banner>
       )}
 
-      <DayTable result={result} events={request.events} />
+      <DayTable result={result} events={request.events} today={today} />
     </div>
   )
 }

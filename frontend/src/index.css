@@ -363,17 +363,6 @@
   letter-spacing: 0.06em;
 }
 
-/* The day table scrolls inside its own region, header row pinned. */
-.day-table .astryx-table-scroll-wrapper {
-  max-height: 28rem;
-  overflow: auto;
-}
-.day-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: var(--color-background-muted);
-}
 .day-toggle .astryx-collapsible-trigger {
   min-height: 3.25rem;
   font-size: 1rem;

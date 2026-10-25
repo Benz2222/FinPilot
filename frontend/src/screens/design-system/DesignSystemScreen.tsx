@@ -438,7 +438,7 @@ export function DesignSystemScreen() {
                   ))}
                 </ul>
               </Specimen>
-              <Specimen title="So sánh kịch bản" source="components/charts/ScenarioCompare.tsx" use="dòng đầu là hiện tại; thanh đỏ chỉ khi dưới 0" wide>
+              <Specimen title="So sánh kịch bản" source="components/charts/ScenarioCompare.tsx" use="dòng đầu là hiện tại; thiếu từ · thấp nhất; thanh đỏ chỉ khi dưới 0" wide>
                 <ScenarioCompare rows={compareRows} today={DS_TODAY} />
               </Specimen>
               <Specimen title="Dòng xem trước khi nhập" source="screens/import/ImportPreviewRow.tsx" use="hợp lệ · lỗi · có thể trùng" wide className="p-0">
@@ -467,19 +467,19 @@ export function DesignSystemScreen() {
 
           <Block id="bieu-do" title="Biểu đồ">
             <Specimen title="Số dư cuối ngày · thiếu" source="components/charts/BalanceChart.tsx" use="đường bậc; đỏ chỉ khi < 0; chạm/rê để xem ngày">
-              <BalanceChart result={short} events={shortEvents} />
+              <BalanceChart result={short} events={shortEvents} today={DS_TODAY} />
             </Specimen>
             <div className="grid gap-4 lg:grid-cols-2">
               <Specimen title="Số dư cuối ngày · đủ" source="components/charts/BalanceChart.tsx">
-                <BalanceChart result={ok} events={okEvents} />
+                <BalanceChart result={ok} events={okEvents} today={DS_TODAY} />
               </Specimen>
               <Specimen title="Tĩnh" source="BalanceChart interactive={false} height shortLabel" use="hình minh họa; height (mặc định 168) và shortLabel (mặc định THIẾU TỪ dd/mm) chỉ cho trang giới thiệu tiếng Anh">
                 <BalanceChart result={short} events={shortEvents} interactive={false} />
                 <BalanceChart result={short} events={shortEvents} interactive={false} height={120} shortLabel="SHORT FROM 27 OCT" className="mt-4" />
               </Specimen>
             </div>
-            <Specimen title="Bảng theo ngày" source="screens/forecast/DayTable.tsx" use="bản bảng của biểu đồ" className="p-0">
-              <DayTable result={short} events={shortEvents} />
+            <Specimen title="Chi tiết từng ngày" source="screens/forecast/DayTable.tsx" use="bản chữ của biểu đồ; một dòng mỗi ngày, ngày không thu chi gộp lại" className="p-0">
+              <DayTable result={short} events={shortEvents} today={DS_TODAY} />
             </Specimen>
           </Block>
 

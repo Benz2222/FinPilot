@@ -2,9 +2,10 @@ import { useMemo, useState } from 'react'
 import type { KeyboardEvent, PointerEvent, ReactNode } from 'react'
 import { ArrowDownLeft, ArrowUpRight, TriangleAlert } from 'lucide-react'
 import { useElementWidth } from '@/hooks/use-element-width'
-import { formatDate, formatDayMonth, formatWeekday } from '@/lib/date'
+import { formatDate, formatDayMonth, formatWeekday, todayIso } from '@/lib/date'
+import { inDays } from '@/lib/explain'
 import { formatCompactVnd, formatVnd, isNegative, isZero, toPlotNumber } from '@/lib/money'
-import type { CashEvent, ForecastResponse } from '@/lib/types'
+import type { CashEvent, ForecastResponse, IsoDate } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { INTRADAY_RISK_NOTE } from '@/screens/forecast/copy'
 import { niceTicks } from './scale'
@@ -23,6 +24,8 @@ interface BalanceChartProps {
   result: ForecastResponse
   /** Events sent with the request, to name what happens on the selected day. */
   events: CashEvent[]
+  /** Counts days in the readout ("sau 6 ngày"); defaults to the real today. */
+  today?: IsoDate
   /** Picture only: no readout, legend or interaction (landing page). */
   interactive?: boolean
   /** Picture only: plot height in px (default 168). */
@@ -32,7 +35,7 @@ interface BalanceChartProps {
   className?: string
 }
 
-export function BalanceChart({ result, events, interactive = true, height: pictureHeight = 168, shortLabel, className }: BalanceChartProps) {
+export function BalanceChart({ result, events, today = todayIso(), interactive = true, height: pictureHeight = 168, shortLabel, className }: BalanceChartProps) {
   const [ref, width] = useElementWidth<HTMLDivElement>()
   const { days } = result
   const n = days.length
@@ -117,7 +120,7 @@ export function BalanceChart({ result, events, interactive = true, height: pictu
             Biểu đồ số dư cuối ngày trong {n} ngày, từ {formatDate(days[0].date)} đến {formatDate(days[n - 1].date)}. Số dư thấp nhất{' '}
             {formatVnd(result.lowestBalance)} vào ngày {formatDate(result.lowestBalanceDate)}. Xem bảng chi tiết từng ngày bên dưới để đọc đủ số liệu.
           </p>
-          <DayReadout day={day} index={selected} eventsById={eventsById} />
+          <DayReadout day={day} today={today} eventsById={eventsById} />
         </>
       )}
 
@@ -250,13 +253,13 @@ export function BalanceChart({ result, events, interactive = true, height: pictu
 }
 
 /** The selected day: date, closing balance, money in and out, and what happens that day. Fixed height while scrubbing. */
-function DayReadout({ day, index, eventsById }: { day: ForecastResponse['days'][number]; index: number; eventsById: Map<string, CashEvent> }) {
+function DayReadout({ day, today, eventsById }: { day: ForecastResponse['days'][number]; today: IsoDate; eventsById: Map<string, CashEvent> }) {
   const negative = isNegative(day.closing)
   const dayEvents = day.eventIds.map((id) => eventsById.get(id)).filter((e): e is CashEvent => Boolean(e))
   return (
     <div aria-hidden="true" className="mb-2 grid min-h-[5.25rem] content-start gap-1">
       <p className="num text-sm text-secondary">
-        {formatWeekday(day.date)}, {formatDate(day.date)} · Ngày {index}
+        {formatWeekday(day.date)}, {formatDate(day.date)} · {inDays(day.date, today)}
       </p>
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <span className={cn('figure num text-[1.75rem] whitespace-nowrap', negative && 'text-shortage')}>{formatVnd(day.closing)}</span>

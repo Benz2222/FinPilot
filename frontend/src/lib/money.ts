@@ -8,6 +8,7 @@ export const MAX_MONEY_DIGITS = 15
 const WHOLE_NUMBER = /^-?\d+$/
 const vndNumber = new Intl.NumberFormat('vi-VN')
 const compactNumber = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 })
+const twoDecimals = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 })
 
 /** `"50000000"` → `"50.000.000 ₫"`, `"-5000000"` → `"−5.000.000 ₫"` (a true minus). Goes through BigInt, so there is no float rounding. */
 export function formatVnd(value: Money): string {
@@ -66,7 +67,7 @@ export function absMoney(value: Money): Money {
   return value.startsWith('-') ? value.slice(1) : value
 }
 
-/** Plain spoken amount for sentences: `30000000` → `30 triệu`, `1500000000` → `1,5 tỷ`; uneven amounts stay exact. */
+/** Plain spoken amount for sentences: `30000000` → `30 triệu`, `1250000000` → `1,25 tỷ`; uneven amounts stay exact. */
 export function formatMoneyWords(value: Money): string {
   if (!WHOLE_NUMBER.test(value)) return formatVnd(value)
   const n = BigInt(absMoney(value))
@@ -75,10 +76,10 @@ export function formatMoneyWords(value: Money): string {
     const scaled = n * 10n ** BigInt(decimals)
     if (scaled % unit !== 0n) return null
     const whole = scaled / unit
-    const text = decimals === 0 ? vndNumber.format(whole) : compactNumber.format(Number(whole) / 10 ** decimals)
+    const text = decimals === 0 ? vndNumber.format(whole) : (decimals === 1 ? compactNumber : twoDecimals).format(Number(whole) / 10 ** decimals)
     return `${sign}${text} ${word}`
   }
-  if (n >= 1_000_000_000n) return exact(1_000_000_000n, 'tỷ', 1) ?? `${sign}${formatVnd(absMoney(value))}`
+  if (n >= 1_000_000_000n) return exact(1_000_000_000n, 'tỷ', 2) ?? `${sign}${formatVnd(absMoney(value))}`
   if (n >= 1_000_000n) return exact(1_000_000n, 'triệu', 1) ?? `${sign}${formatVnd(absMoney(value))}`
   return `${sign}${formatVnd(absMoney(value))}`
 }
