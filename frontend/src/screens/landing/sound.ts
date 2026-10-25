@@ -1,14 +1,14 @@
-import { useSyncExternalStore } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 
 /*
- * The landing page's sound effects, synthesized with Web Audio. Off until the visitor turns them on; nothing plays
- * by itself and nothing is downloaded. Every effect is a no-op while off.
+ * The landing page's sound effects, synthesized with Web Audio. On by default, but browsers only allow audio after
+ * the visitor's first tap or key press, so nothing plays before that. Every effect is a no-op while off.
  */
 
 let ctx: AudioContext | null = null
 let master: GainNode | null = null
 let noiseBuf: AudioBuffer | null = null
-let on = false
+let on = true
 let lastFlap = 0
 const listeners = new Set<() => void>()
 
@@ -41,7 +41,7 @@ interface ToneOptions {
 }
 
 function tone(freq: number, dur: number, o: ToneOptions = {}) {
-  if (!on || !ctx || !master) return
+  if (!on || !ctx || !master || ctx.state !== 'running') return
   const t = ctx.currentTime + (o.at ?? 0)
   const osc = ctx.createOscillator()
   const g = ctx.createGain()
@@ -63,7 +63,7 @@ function tone(freq: number, dur: number, o: ToneOptions = {}) {
 }
 
 function noise(dur: number, o: { gain?: number; freq?: number; to?: number; q?: number } = {}) {
-  if (!on || !ctx || !master || !noiseBuf) return
+  if (!on || !ctx || !master || !noiseBuf || ctx.state !== 'running') return
   const t = ctx.currentTime
   const src = ctx.createBufferSource()
   src.buffer = noiseBuf
@@ -85,11 +85,7 @@ function noise(dur: number, o: { gain?: number; freq?: number; to?: number; q?: 
 export const sound = {
   toggle() {
     on = !on
-    if (on) {
-      ensure()
-      if (ctx?.state === 'suspended') void ctx.resume()
-      sound.chime()
-    }
+    if (on) void unlock().then(() => sound.chime())
     for (const l of listeners) l()
   },
   tick: () => noise(0.03, { gain: 0.1, freq: 3400, q: 5 }),
@@ -117,6 +113,26 @@ export const sound = {
     tone(1568, 0.22, { gain: 0.07, at: 0.06 })
   },
   uncheck: () => tone(523, 0.12, { type: 'triangle', gain: 0.08 }),
+}
+
+async function unlock() {
+  ensure()
+  if (ctx?.state === 'suspended') await ctx.resume().catch(() => undefined)
+}
+
+/** Starts audio on the visitor's first tap or key press, which is the earliest moment browsers allow it. */
+export function useSoundUnlock() {
+  useEffect(() => {
+    const first = () => {
+      if (on) void unlock()
+    }
+    window.addEventListener('pointerdown', first, { capture: true })
+    window.addEventListener('keydown', first, { capture: true })
+    return () => {
+      window.removeEventListener('pointerdown', first, { capture: true })
+      window.removeEventListener('keydown', first, { capture: true })
+    }
+  }, [])
 }
 
 export function useSoundOn(): boolean {

@@ -21,7 +21,7 @@ import { FlightPlan } from './FlightPlan'
 import type { Scenario } from './FlightPlan'
 import { RESTOCK_DEFAULT, fly } from './model'
 import { scrollToSection, useReducedMotion, useReveal } from './motion'
-import { sound, useSoundOn } from './sound'
+import { sound, useSoundOn, useSoundUnlock } from './sound'
 import { Ticker } from './Ticker'
 
 const FRAME = 'mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-10'
@@ -180,6 +180,7 @@ export function LandingScreen() {
   const [checks, setChecks] = useState(0)
   const onCount = useCallback((n: number) => setChecks(n), [])
   useReveal(root)
+  useSoundUnlock()
 
   function change(next: Scenario) {
     const was = flight.short
