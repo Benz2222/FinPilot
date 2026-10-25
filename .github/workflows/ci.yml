@@ -30,3 +30,16 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run build
+
+  deploy-api:
+    # Render's own auto-deploy does not fire for this service; deploy the API only after main passes CI.
+    needs: [backend, frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy hook
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          test -n "$RENDER_DEPLOY_HOOK" || { echo 'Set RENDER_DEPLOY_HOOK in repository Actions secrets.'; exit 1; }
+          curl --fail --silent --show-error --output /dev/null -X POST "$RENDER_DEPLOY_HOOK"
