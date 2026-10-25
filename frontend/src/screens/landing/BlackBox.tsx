@@ -4,7 +4,7 @@ import { Button } from '@astryxdesign/core/Button'
 import { Card } from '@astryxdesign/core/Card'
 import { Icon } from '@astryxdesign/core/Icon'
 import { cn } from '@/lib/utils'
-import { fmtM } from './model'
+import { useCopy } from './copy'
 import { useInView, useReducedMotion } from './motion'
 import { sound } from './sound'
 
@@ -15,60 +15,47 @@ import { sound } from './sound'
 
 const OPEN = 96_400_000
 type Kind = 'open' | 'say' | 'fp' | 'in' | 'out' | 'fail' | 'ok'
-/** time, day of the month (from 0), source, text, amount, kind (default: in/out by sign) */
-type Line = [string, number, string, string, number, Kind?]
+/** day of the month (from 0), time, amount, kind (default: in/out by sign). The words are in the copy, line for line. */
+type Line = [number, string, number, Kind?]
 type Channel = 'a' | 'b'
 
 const TAPES: Record<Channel, Line[]> = {
   a: [
-    ['01 SEP 08:00', 0, 'Ledger', 'Opening balance', 0, 'open'],
-    ['02 SEP 09:12', 1, 'Supplier', '“Pay the full ₫72M today and we take 2% off.”', 0, 'say'],
-    ['02 SEP 09:14', 1, 'Owner', '“Deal. Send all of it.”', 0, 'say'],
-    ['02 SEP 09:14', 1, 'Bank', 'Restock order, paid in full', -72e6],
-    ['05 SEP 06:30', 4, 'Shopee', 'Marketplace payout', 16.5e6],
-    ['09 SEP 10:00', 8, 'Ads', 'Ads & shipping', -7.5e6],
-    ['15 SEP 08:00', 14, 'Landlord', 'Workshop rent', -28e6],
-    ['19 SEP 06:30', 18, 'Shopee', 'Marketplace payout', 17.9e6],
-    ['22 SEP 16:20', 21, 'COD', 'Cash on delivery, new glaze line', 12.4e6],
-    ['26 SEP 17:00', 25, 'Owner', '“Run payroll.”', 0, 'say'],
-    ['26 SEP 17:00', 25, 'Bank', 'Payroll for 9 staff', -48.5e6, 'fail'],
-    ['27 SEP 09:30', 26, 'Owner', '“Borrow ₫15M at 4% a month. Pay everyone tomorrow.”', 0, 'say'],
+    [0, '08:00', 0, 'open'],
+    [1, '09:12', 0, 'say'],
+    [1, '09:14', 0, 'say'],
+    [1, '09:14', -72e6],
+    [4, '06:30', 16.5e6],
+    [8, '10:00', -7.5e6],
+    [14, '08:00', -28e6],
+    [18, '06:30', 17.9e6],
+    [21, '16:20', 12.4e6],
+    [25, '17:00', 0, 'say'],
+    [25, '17:00', -48.5e6, 'fail'],
+    [26, '09:30', 0, 'say'],
   ],
   b: [
-    ['01 SEP 08:00', 0, 'Ledger', 'Opening balance', 0, 'open'],
-    ['02 SEP 09:12', 1, 'Supplier', '“Pay the full ₫72M today and we take 2% off.”', 0, 'say'],
-    ['02 SEP 09:13', 1, 'FinPilot', 'Plotted paid in full: payroll on 26 Sep comes up ₫12.8M short.', 0, 'fp'],
-    ['02 SEP 09:13', 1, 'FinPilot', 'Plotted 36 + 36, second half on 3 Oct: payroll clears, lowest point ₫6.8M.', 0, 'fp'],
-    ['02 SEP 09:16', 1, 'Owner', '“Half now, half on the 3rd. We can live without the 2%.”', 0, 'say'],
-    ['02 SEP 09:16', 1, 'Bank', 'Restock order, first half', -36e6],
-    ['05 SEP 06:30', 4, 'Shopee', 'Marketplace payout', 16.5e6],
-    ['09 SEP 10:00', 8, 'Ads', 'Ads & shipping', -7.5e6],
-    ['15 SEP 08:00', 14, 'Landlord', 'Workshop rent', -28e6],
-    ['19 SEP 06:30', 18, 'Shopee', 'Marketplace payout', 17.9e6],
-    ['22 SEP 16:20', 21, 'COD', 'Cash on delivery, new glaze line', 12.4e6],
-    ['26 SEP 17:00', 25, 'Bank', 'Payroll for 9 staff', -48.5e6, 'ok'],
-    ['30 SEP 06:30', 29, 'Shopee', 'Marketplace payout', 19.6e6],
-    ['03 OCT 09:00', 32, 'Bank', 'Restock order, second half', -36e6],
+    [0, '08:00', 0, 'open'],
+    [1, '09:12', 0, 'say'],
+    [1, '09:13', 0, 'fp'],
+    [1, '09:13', 0, 'fp'],
+    [1, '09:16', 0, 'say'],
+    [1, '09:16', -36e6],
+    [4, '06:30', 16.5e6],
+    [8, '10:00', -7.5e6],
+    [14, '08:00', -28e6],
+    [18, '06:30', 17.9e6],
+    [21, '16:20', 12.4e6],
+    [25, '17:00', -48.5e6, 'ok'],
+    [29, '06:30', 19.6e6],
+    [32, '09:00', -36e6],
   ],
 }
-const END: Record<Channel, { stamp: string; sub: string; label: string; text: string }> = {
-  a: {
-    stamp: 'Payroll bounced',
-    sub: 'Probable cause found',
-    label: 'Probable cause',
-    text: 'The whole ₫72M left 24 days before payroll, and nothing showed what the rest of the month looked like. Now play channel B.',
-  },
-  b: {
-    stamp: 'Payroll cleared',
-    sub: 'No loan · nobody paid late',
-    label: 'Outcome',
-    text: 'Same month, same sales. FinPilot saw the gap 24 days early, and one split payment kept every salary on time.',
-  },
-}
-const CHANNEL_NAME: Record<Channel, string> = { a: 'As it happened', b: 'With FinPilot' }
 
 interface TapeRow {
-  line: Line
+  day: number
+  hhmm: string
+  amount: number
   kind: Kind
   /** Balance after this line, or null for words. A rejected payment shows what it would have left. */
   balance: number | null
@@ -76,12 +63,12 @@ interface TapeRow {
 
 function rowsOf(ch: Channel): TapeRow[] {
   let balance = OPEN
-  return TAPES[ch].map((line) => {
-    const kind = line[5] ?? (line[4] < 0 ? 'out' : 'in')
-    const after = balance + line[4]
-    const money = line[4] !== 0 || kind === 'open'
+  return TAPES[ch].map(([day, hhmm, amount, k]) => {
+    const kind = k ?? (amount < 0 ? 'out' : 'in')
+    const after = balance + amount
+    const money = amount !== 0 || kind === 'open'
     if (kind !== 'fail') balance = after
-    return { line, kind, balance: money ? after : null }
+    return { day, hhmm, amount, kind, balance: money ? after : null }
   })
 }
 
@@ -137,6 +124,8 @@ function useEased(target: number, reduce: boolean): number {
 }
 
 export function BlackBox() {
+  const t = useCopy()
+  const bb = t.blackBox
   const reduce = useReducedMotion()
   const tapeRef = useRef<HTMLDivElement>(null)
   const seen = useInView(tapeRef, { threshold: 0.35 })
@@ -199,7 +188,8 @@ export function BlackBox() {
   const lastMoney = rows.slice(0, printed).reduce<number>((b, r) => (r.balance === null ? b : r.balance), OPEN)
   const failed = rows.slice(0, printed).some((r) => r.kind === 'fail')
   const figure = useEased(lastMoney, reduce)
-  const end = END[ch]
+  const end = bb.end[ch]
+  const words = bb.tapes[ch]
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start lg:gap-10">
@@ -207,7 +197,7 @@ export function BlackBox() {
         <div className={cn('fp-recorder', failed && !reduce && 'fp-recorder-hit')} key={failed ? 'hit' : 'calm'}>
           <span className="fp-hazard" aria-hidden="true" />
           <p className="flex items-baseline justify-between gap-3 font-display text-xl font-extrabold tracking-tight">
-            Cash flight recorder
+            {bb.recorder}
             <small className="grid text-right font-mono text-[0.625rem] font-bold tracking-[0.14em] uppercase">
               <span>Do not open</span>
               <span lang="vi">Không được mở</span>
@@ -215,68 +205,71 @@ export function BlackBox() {
           </p>
           <div className={cn('fp-lcd', figure < 0 && 'fp-lcd-bad', failed && 'fp-lcd-alarm')} aria-hidden="true">
             <p className="flex justify-between">
-              <b>{current?.line[0] ?? TAPES[ch][0][0]}</b>
+              <b>{bb.time(current?.day ?? 0, current?.hhmm ?? rows[0].hhmm)}</b>
               <span>CH {ch.toUpperCase()}</span>
             </p>
             <p className="flex items-end gap-2">
               <SevenSegment value={figure} />
-              <span className="pb-1 font-bold">₫M</span>
+              <span className="pb-1 font-bold">{bb.unit}</span>
             </p>
             <p className="flex justify-between">
-              <span>{current?.line[2] ?? 'Ledger'}</span>
-              <b>Day {(current?.line[1] ?? 0) + 1}</b>
+              <span>{words[current ? printed - 1 : 0][0]}</span>
+              <b>{bb.day((current?.day ?? 0) + 1)}</b>
             </p>
           </div>
           <span className="fp-hazard" aria-hidden="true" />
           <p className="flex justify-between gap-3 font-mono text-[0.6875rem] font-bold tracking-[0.12em] uppercase">
             <span>S/N FP-26-029</span>
-            <span lang="vi">Tiệm Gốm Mây · fictional</span>
+            <span>
+              <span lang="vi">Tiệm Gốm Mây</span> · {bb.fictional}
+            </span>
           </p>
         </div>
-        <div role="group" aria-label="Playback channel" className="grid grid-cols-2 gap-2">
+        <div role="group" aria-label={bb.channel} className="grid grid-cols-2 gap-2">
           {(['a', 'b'] as const).map((k) => (
             <button key={k} type="button" aria-pressed={ch === k} onClick={() => play(k)} className="fp-channel">
               <span className="font-mono text-xs font-bold tracking-[0.14em]">CH {k.toUpperCase()}</span>
-              <b>{CHANNEL_NAME[k]}</b>
+              <b>{bb.channels[k]}</b>
             </button>
           ))}
         </div>
-        <Button variant="secondary" label="Replay the tape" icon={<Icon icon={Play} />} onClick={() => play(ch)} />
+        <Button variant="secondary" label={bb.replay} icon={<Icon icon={Play} />} onClick={() => play(ch)} />
       </div>
 
       <div ref={tapeRef} className="grid gap-4" data-reveal="" data-d="2">
         <Card padding={0} elevation="high" className="relative overflow-hidden text-[var(--color-text-primary)]">
           <p className="flex flex-wrap justify-between gap-x-3 gap-y-1 border-b-2 border-dashed border-[var(--color-border-emphasized)] px-4 py-3 font-mono text-xs font-bold tracking-[0.1em] uppercase sm:px-5">
-            <span>Cockpit voice + ledger transcript</span>
+            <span>{bb.transcript}</span>
             <b>
-              CH {ch.toUpperCase()} · {CHANNEL_NAME[ch]}
+              CH {ch.toUpperCase()} · {bb.channels[ch]}
             </b>
           </p>
           <ol className="fp-tape">
             {rows.map((r, i) => (
               <li key={`${ch}${i}`} className="fp-tape-row" data-kind={r.kind} data-state={i < printed ? (i === printed - 1 && !ended ? 'current' : 'on') : 'wait'}>
-                <span className="num font-mono text-xs text-secondary">{r.line[0]}</span>
+                <span className="num font-mono text-xs text-secondary">{bb.time(r.day, r.hhmm)}</span>
                 <span className="grid min-w-0 gap-0.5">
-                  <span className="eyebrow">{r.line[2]}</span>
+                  <span className="eyebrow">{words[i][0]}</span>
                   <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                    <span className={cn(r.kind === 'say' && 'italic')}>{r.line[3]}</span>
-                    {r.line[4] !== 0 && (
+                    <span className={cn(r.kind === 'say' && 'italic')}>{words[i][1]}</span>
+                    {r.amount !== 0 && (
                       <span className="num font-semibold whitespace-nowrap">
-                        {r.line[4] < 0 ? '−' : '+'}₫{new Intl.NumberFormat('en-US').format(Math.abs(r.line[4]))}
+                        {r.amount < 0 ? '−' : '+'}
+                        {t.vnd(Math.abs(r.amount))}
                       </span>
                     )}
-                    {r.kind === 'fail' && <span className="fp-tape-badge bg-shortage text-on-error">Rejected</span>}
-                    {r.kind === 'ok' && <span className="fp-tape-badge bg-ok text-on-success">Sent</span>}
+                    {r.kind === 'fail' && <span className="fp-tape-badge bg-shortage text-on-error">{bb.rejected}</span>}
+                    {r.kind === 'ok' && <span className="fp-tape-badge bg-ok text-on-success">{bb.sent}</span>}
                   </span>
                 </span>
                 <span className={cn('num text-right font-mono text-sm font-bold whitespace-nowrap', r.balance !== null && r.balance < 0 && 'text-shortage')}>
-                  {r.kind === 'fail' ? `Short ${fmtM(-(r.balance ?? 0))}` : r.balance !== null ? fmtM(r.balance) : ''}
+                  {r.kind === 'fail' ? bb.short(-(r.balance ?? 0)) : r.balance !== null ? bb.balance(r.balance) : ''}
                 </span>
               </li>
             ))}
           </ol>
           <p className={cn('min-h-28 px-4 pt-3 font-mono text-xs tracking-[0.2em] text-secondary uppercase transition-opacity sm:px-5', ended ? 'opacity-100' : 'opacity-0')}>
-            End of tape
+            {bb.endOfTape}
           </p>
           <div aria-hidden="true" className={cn('fp-stamp', ch === 'b' && 'fp-stamp-ok', ended && 'fp-stamp-on')}>
             <b>{end.stamp}</b>

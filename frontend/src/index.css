@@ -227,6 +227,34 @@
     box-shadow: var(--shadow-low);
   }
 
+  /* The landing page's VI / EN switch: one outlined pill, the current language filled with ink. */
+  .fp-lang {
+    display: inline-flex;
+    padding: 2px;
+    border: 1px solid var(--color-border-emphasized);
+    border-radius: var(--radius-full);
+    background: var(--color-background-surface);
+  }
+  .fp-lang button {
+    min-width: 2.25rem;
+    min-height: calc(var(--size-element-sm) - 6px);
+    padding-inline: 0.5rem;
+    border-radius: var(--radius-full);
+    font-family: var(--font-family-code);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--color-text-secondary);
+    transition: background-color var(--duration-fast) ease;
+  }
+  .fp-lang button:hover {
+    background: var(--color-accent-muted);
+  }
+  .fp-lang button[aria-pressed='true'] {
+    background: var(--color-text-primary);
+    color: var(--color-background-surface);
+  }
+
   /* Two-way choice (Chi ra / Thu về) drawn as one ink-outlined pill split in two. */
   .fp-toggle {
     display: grid;

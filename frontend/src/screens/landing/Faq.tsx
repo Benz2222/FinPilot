@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Plus } from 'lucide-react'
+import { useCopy } from './copy'
 import { useInView, useReducedMotion } from './motion'
 import { sound } from './sound'
 
@@ -7,6 +8,7 @@ let kick = 0
 
 /** "FREQ 121.5 · STANDING BY": a small radio wave that swells when a question opens. Still with reduced motion. */
 export function RadioWave() {
+  const t = useCopy()
   const ref = useRef<SVGPathElement>(null)
   const box = useRef<SVGSVGElement>(null)
   const visible = useInView(box, { once: false, threshold: 0 })
@@ -40,13 +42,14 @@ export function RadioWave() {
       <svg ref={box} viewBox="0 0 46 28" aria-hidden="true" className="h-6 w-10 text-[var(--color-success)]">
         <path ref={ref} d="M1 14h44" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       </svg>
-      FREQ 121.5 · STANDING BY
+      {t.faq.radio}
     </p>
   )
 }
 
 /** One question as a disclosure: its callsign, the question, and the tower's answer. */
 export function FaqItem({ n, q, a }: { n: number; q: string; a: string }) {
+  const t = useCopy()
   return (
     <details
       className="fp-faq"
@@ -64,7 +67,7 @@ export function FaqItem({ n, q, a }: { n: number; q: string; a: string }) {
       </summary>
       <p className="fp-faq-answer">
         <span className="fp-faq-twr" aria-hidden="true">
-          TWR
+          {t.faq.tower}
         </span>
         <span>{a}</span>
       </p>

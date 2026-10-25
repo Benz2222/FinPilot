@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { Check } from 'lucide-react'
 import { ProgressBar } from '@astryxdesign/core/ProgressBar'
 import { cn } from '@/lib/utils'
-import { CHECKS } from './copy'
+import { EN, useCopy } from './copy'
 import { useInView, useReducedMotion } from './motion'
 import { sound } from './sound'
 
+/** Four checks in every language. */
+const COUNT = EN.checklist.checks.length
 
 /** One line of the pre-flight list: a toggle with its challenge, dotted leader, response and what it means. */
 export function CheckItem({ title, response, text, checked, onToggle }: { title: string; response: string; text: string; checked: boolean; onToggle: () => void }) {
@@ -31,16 +33,18 @@ export function CheckItem({ title, response, text, checked, onToggle }: { title:
  * (all at once with reduced motion) unless the visitor gets there first; each one can be toggled.
  */
 export function Checklist({ onCount }: { onCount: (n: number) => void }) {
+  const t = useCopy()
+  const checks = t.checklist.checks
   const ref = useRef<HTMLDivElement>(null)
   const seen = useInView(ref, { threshold: 0.45 })
   const reduce = useReducedMotion()
-  const [done, setDone] = useState<boolean[]>(() => CHECKS.map(() => false))
+  const [done, setDone] = useState<boolean[]>(() => Array.from({ length: COUNT }, () => false))
   const touched = useRef(false)
   const n = done.filter(Boolean).length
 
   useEffect(() => onCount(n), [n, onCount])
   useEffect(() => {
-    if (n === CHECKS.length) sound.chime()
+    if (n === COUNT) sound.chime()
   }, [n])
 
   function set(i: number, on: boolean) {
@@ -51,7 +55,7 @@ export function Checklist({ onCount }: { onCount: (n: number) => void }) {
 
   useEffect(() => {
     if (!seen) return
-    const timers = CHECKS.map((_, i) =>
+    const timers = Array.from({ length: COUNT }, (_, i) =>
       setTimeout(
         () => {
           if (!touched.current) set(i, true)
@@ -65,12 +69,12 @@ export function Checklist({ onCount }: { onCount: (n: number) => void }) {
   return (
     <div ref={ref} className="fp-clip">
       <p className="flex justify-between gap-3 border-b-2 border-dashed border-[var(--color-border-emphasized)] px-4 py-3 font-mono text-xs font-bold tracking-[0.12em] uppercase sm:px-5">
-        <span>Pre-flight · restock</span>
+        <span>{t.checklist.head}</span>
         <span className="text-secondary">FP-CHK-01</span>
       </p>
       <ol className="divide-y">
-        {CHECKS.map((c, i) => (
-          <li key={c.title}>
+        {checks.map((c, i) => (
+          <li key={i}>
             <CheckItem
               {...c}
               checked={done[i]}
@@ -82,11 +86,11 @@ export function Checklist({ onCount }: { onCount: (n: number) => void }) {
           </li>
         ))}
       </ol>
-      <div className={cn('grid gap-2 border-t-2 border-[var(--color-border-emphasized)] px-4 py-3 sm:px-5', n === CHECKS.length && 'bg-ok-soft')}>
+      <div className={cn('grid gap-2 border-t-2 border-[var(--color-border-emphasized)] px-4 py-3 sm:px-5', n === COUNT && 'bg-ok-soft')}>
         <p className="num text-sm font-bold" aria-live="polite">
-          {n === CHECKS.length ? '4 of 4 — cleared for restock' : `${n} of 4 checks`}
+          {t.checklist.count(n, COUNT)}
         </p>
-        <ProgressBar label="Checks done" isLabelHidden value={(n / CHECKS.length) * 100} />
+        <ProgressBar label={t.checklist.progress} isLabelHidden value={(n / COUNT) * 100} />
       </div>
     </div>
   )
