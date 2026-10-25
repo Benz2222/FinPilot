@@ -190,7 +190,7 @@ export function ObligationEntry({ obligation, overdue = false, date }: { obligat
               </div>
               <p className="num text-xs text-muted-foreground">
                 Đã {verb} {formatVnd(paid)} / {formatVnd(obligation.amount)}
-                {!done && <> · còn {formatVnd(left)} đưa vào dự báo</>}
+                {!done && <> · còn {formatVnd(left)}</>}
               </p>
               <ul className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                 {obligation.payments.map((p) => (

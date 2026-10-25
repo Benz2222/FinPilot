@@ -26,7 +26,7 @@ function Empty() {
     <div className="grid gap-4">
       <ReadoutPanel className="grid-cols-2 lg:grid-cols-4">
         {STATS.map((label) => (
-          <Readout key={label} label={label} signal="idle" value={<span className="text-muted-foreground">—</span>} sub="Chưa có số liệu" />
+          <Readout key={label} label={label} signal="idle" value={<span className="text-muted-foreground">—</span>} />
         ))}
       </ReadoutPanel>
       <EmptyState
@@ -38,7 +38,7 @@ function Empty() {
           </a>
         }
       >
-        Ở đây sẽ là một câu trả lời: có thiếu tiền không, ngày nào, bao nhiêu, vì khoản nào.
+        Nhập số dư và các khoản sắp thu, sắp chi để biết trước ngày nào thiếu tiền.
       </EmptyState>
     </div>
   )
@@ -62,11 +62,7 @@ export function ForecastScreen() {
   const { data, forecast, forecastError, forecastLoading, retryForecast, today } = useShop()
 
   const heading = (
-    <PageHeader
-      eyebrow="Buồng lái dòng tiền · 56 ngày"
-      title="Dự báo & cảnh báo"
-      description="Số dư cuối mỗi ngày trong 56 ngày, tính bằng phép cộng trừ từ số dư hiện có và các khoản còn lại. Không phải dự báo AI."
-    />
+    <PageHeader title="Dự báo & cảnh báo" />
   )
 
   if (!data) return heading
@@ -191,10 +187,11 @@ export function ForecastScreen() {
                 <AlertTitle>{result.unresolvedEvents.length} khoản quá hạn chưa được tính</AlertTitle>
                 <AlertDescription>
                   <p>
-                    Ngày hẹn đã qua ngày tính số dư hiện có mà chưa xong. Không tính, cũng không coi là đã trả.{' '}
+                    Chọn ngày mới, ghi đã xong hoặc hủy ở{' '}
                     <a href="#lich" className="font-medium text-primary underline underline-offset-4">
-                      Đổi ngày ở Lịch thu–chi
+                      Lịch thu–chi
                     </a>
+                    .
                   </p>
                   <ul className="mt-2 grid gap-0.5 text-foreground">
                     {result.unresolvedEvents.map((e) => (
@@ -215,7 +212,7 @@ export function ForecastScreen() {
                 <CalendarClock aria-hidden="true" />
                 <AlertTitle>{riskDays.length} ngày vừa thu vừa chi</AlertTitle>
                 <AlertDescription>
-                  <p>{INTRADAY_RISK_NOTE}: nếu chi trước khi tiền về, trong ngày vẫn có thể thiếu.</p>
+                  <p>{INTRADAY_RISK_NOTE}.</p>
                   <p className="num font-medium text-foreground">{riskDays.map((d) => `${formatWeekday(d.date)} ${formatDayMonth(d.date)}`).join(' · ')}</p>
                 </AlertDescription>
               </Alert>
@@ -236,14 +233,14 @@ export function ForecastScreen() {
             label="Ngày đầu thiếu tiền"
             value={result.firstShortageDate ? formatDayMonth(result.firstShortageDate) : 'Không có'}
             numeric={Boolean(result.firstShortageDate)}
-            sub={result.firstShortageDate ? `${formatWeekday(result.firstShortageDate)} · ${inDays(result.firstShortageDate, today)}` : 'Số dư không xuống dưới 0'}
+            sub={result.firstShortageDate && `${formatWeekday(result.firstShortageDate)} · ${inDays(result.firstShortageDate, today)}`}
             signal={result.firstShortageDate ? 'shortage' : 'ok'}
             gauge={<DayStrip days={result.days} />}
           />
           <Readout
             label="Thiếu lớn nhất"
             value={formatVnd(result.maxShortage)}
-            sub={story ? `Mức âm sâu nhất trong kỳ · ${shortDays} ngày dưới 0` : 'Không ngày nào âm'}
+            sub={story && `${shortDays} ngày thiếu tiền`}
             signal={story ? 'shortage' : 'ok'}
             gauge={<DepthTrace days={result.days} deepest={result.maxShortage} />}
           />
@@ -276,9 +273,6 @@ export function ForecastScreen() {
           <CardHeader className="pb-4 sm:pb-4">
             <div>
               <CardTitle id="trail-title">{story ? 'Tiền đi đâu trước ngày thiếu' : 'Tiền đi đâu tới ngày thấp nhất'}</CardTitle>
-              <CardDescription>
-                Từng khoản từ đầu kỳ tới ngày số dư thấp nhất ({formatDate(result.lowestBalanceDate)}), kèm số dư sau mỗi khoản.
-              </CardDescription>
             </div>
           </CardHeader>
           <div className="border-t">
@@ -291,7 +285,7 @@ export function ForecastScreen() {
         <Alert>
           <Info aria-hidden="true" />
           <AlertTitle>
-            {result.eventsAfterHorizon.length} khoản sau {formatDate(last)}, ngoài 56 ngày nên chưa tính
+            {result.eventsAfterHorizon.length} khoản sau {formatDate(last)} chưa được tính
           </AlertTitle>
           <AlertDescription>
             <EventList events={result.eventsAfterHorizon} />

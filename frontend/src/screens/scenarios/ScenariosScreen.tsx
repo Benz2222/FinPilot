@@ -7,7 +7,7 @@ import { EmptyState, PageHeader } from '@/components/page'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Input } from '@/components/ui/input'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@/components/ui/menu'
@@ -169,8 +169,7 @@ function shortageIndex(o: ScenarioOutcome): number | null {
   return o.firstShortageDate ? diffDays(o.start, o.firstShortageDate) : null
 }
 
-const DESCRIPTION =
-  'Thử trên giấy trước khi chi tiền thật: chia đợt, nhập muộn, nhập ít hơn, tiền về trễ. Kịch bản không sửa dữ liệu thật. App so sánh con số; chọn phương án nào là việc của bạn.'
+const DESCRIPTION = 'Thử chia đợt, nhập muộn, nhập ít hơn hay tiền về trễ trước khi chi tiền thật. Lịch thu–chi không bị sửa.'
 
 export function ScenariosScreen() {
   const { data, baseline, baselineFingerprint, forecast, write, today } = useShop()
@@ -301,7 +300,6 @@ export function ScenariosScreen() {
             <CardHeader className="pb-4 sm:pb-4">
               <div>
                 <CardTitle id="board-title">Bảng so sánh</CardTitle>
-                <CardDescription>Hiện tại so với từng kịch bản đã lưu, trong cùng 56 ngày.</CardDescription>
               </div>
             </CardHeader>
             <CompareTable
@@ -323,7 +321,7 @@ export function ScenariosScreen() {
                 <Card className="grid gap-3 p-4 sm:p-5">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <h4 className="font-semibold">Hiện tại</h4>
-                    <p className="text-[0.8125rem] text-muted-foreground">Dữ liệu thật trong Lịch thu–chi, không giả định gì thêm</p>
+                    <p className="text-[0.8125rem] text-muted-foreground">Theo Lịch thu–chi</p>
                   </div>
                   {base && <Sparkline closings={base.closings} domain={domain} shortageIndex={shortageIndex(base)} />}
                 </Card>
@@ -371,7 +369,7 @@ export function ScenariosScreen() {
                         <Alert variant="warning" role="status">
                           <TriangleAlert aria-hidden="true" />
                           <AlertDescription className="text-foreground">
-                            <p>Dữ liệu thật đã thay đổi sau khi tính kịch bản này. Số trong bảng và đường bên dưới là kết quả cũ.</p>
+                            <p>Lịch thu–chi đã thay đổi sau khi tính kịch bản này. Số bên dưới là kết quả cũ.</p>
                             <Button size="sm" variant="outline" className="mt-2" disabled={refreshing === s.id} onClick={() => void refresh(s)}>
                               <RefreshCw aria-hidden="true" className={refreshing === s.id ? 'motion-safe:animate-spin' : undefined} />
                               Tính lại với dữ liệu mới
@@ -544,9 +542,8 @@ export function ScenariosScreen() {
                 <Split className="size-5" />
               </div>
               <h2 id="builder-title" className="text-lg font-semibold">
-                Bàn thử
+                Thử phương án mới
               </h2>
-              <p className="text-sm text-muted-foreground">Mỗi kịch bản là vài giả định đặt lên dữ liệu thật. Lịch thu–chi không bị sửa.</p>
               <Button variant="outline" size="lg" onClick={startNew}>
                 Bắt đầu kịch bản mới <ArrowRight aria-hidden="true" />
               </Button>

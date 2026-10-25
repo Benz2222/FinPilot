@@ -107,7 +107,7 @@ export function AdjustmentForm({
   return (
     <form onSubmit={submit} noValidate className="grid gap-3.5 rounded-lg border border-primary/40 bg-glass p-4" aria-label={title}>
       <p className="placard text-primary">{title}</p>
-      {initial && <p className="-mt-2 text-xs text-muted-foreground">Số gợi ý để bắt đầu; sửa tùy ý trước khi thêm.</p>}
+      {initial && <p className="-mt-2 text-xs text-muted-foreground">Số gợi ý, sửa tùy ý.</p>}
       {preset === 'add' ? (
         <div className="grid gap-3 sm:grid-cols-2">
           <Field id={f('label')} label="Nội dung" error={shown.label}>

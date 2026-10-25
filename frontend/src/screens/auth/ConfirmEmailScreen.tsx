@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { CircleAlert, CircleCheck, LoaderCircle, MailCheck, WifiOff } from 'lucide-react'
+import { CircleAlert, LoaderCircle, MailCheck, WifiOff } from 'lucide-react'
 import { Field, TextField } from '@/components/fields'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -13,7 +13,7 @@ import { EMAIL, SPAM_HINT, authProblems } from './messages'
 type State = 'checking' | 'confirmed' | 'invalid' | 'offline'
 
 /** Asks for a fresh confirmation link: the way out of a broken or expired one. */
-function ResendForm({ initialEmail }: { initialEmail: string }) {
+function ResendForm({ initialEmail, offerSignUp }: { initialEmail: string; offerSignUp: boolean }) {
   const [email, setEmail] = useState(initialEmail)
   const [error, setError] = useState<string>()
   const [formErrors, setFormErrors] = useState<string[]>([])
@@ -24,9 +24,19 @@ function ResendForm({ initialEmail }: { initialEmail: string }) {
     return (
       <Alert variant="success" role="status">
         <MailCheck aria-hidden="true" />
-        <AlertTitle>Đã gửi liên kết mới</AlertTitle>
-        <AlertDescription>
-          Nếu <strong className="font-medium break-all text-foreground">{sentTo}</strong> đã đăng ký và chưa xác nhận, thư sẽ tới trong vài phút. {SPAM_HINT}
+        <AlertDescription className="text-foreground">
+          <p>
+            Nếu <strong className="font-medium break-all">{sentTo}</strong> đã có tài khoản và chưa xác nhận, FinPilot sẽ gửi liên kết mới trong vài phút.{' '}
+            {SPAM_HINT}
+          </p>
+          {offerSignUp && (
+            <p className="mt-2">
+              Chưa có tài khoản?{' '}
+              <a href="/#dang-ky" className="font-medium text-primary hover:underline">
+                Đăng ký
+              </a>
+            </p>
+          )}
         </AlertDescription>
       </Alert>
     )
@@ -120,14 +130,14 @@ export function ConfirmEmailScreen({ session }: { session: Session }) {
           <AlertTitle>Liên kết không đầy đủ</AlertTitle>
           <AlertDescription>Mở lại liên kết trong email, hoặc nhận một liên kết mới bên dưới.</AlertDescription>
         </Alert>
-        <ResendForm key={sessionEmail} initialEmail={sessionEmail} />
+        <ResendForm key={sessionEmail} initialEmail={sessionEmail} offerSignUp={!signedIn} />
       </AuthLayout>
     )
   }
 
   if (state === 'checking') {
     return (
-      <AuthLayout title="Đang xác nhận email…" description="Chỉ mất vài giây.">
+      <AuthLayout title="Đang xác nhận email…">
         <p role="status" className="flex items-center gap-2.5 text-sm text-secondary-foreground">
           <LoaderCircle aria-hidden="true" className="size-4 text-primary motion-safe:animate-spin" />
           Đang kiểm tra liên kết
@@ -138,13 +148,7 @@ export function ConfirmEmailScreen({ session }: { session: Session }) {
 
   if (state === 'confirmed') {
     return (
-      <AuthLayout title="Đã xác nhận email" description="Cảm ơn bạn. Tài khoản FinPilot đã sẵn sàng.">
-        <Alert variant="success" role="status" className="mb-5">
-          <CircleCheck aria-hidden="true" />
-          <AlertDescription className="text-foreground">
-            Từ giờ, nếu quên mật khẩu, FinPilot gửi được liên kết đặt lại tới email này.
-          </AlertDescription>
-        </Alert>
+      <AuthLayout title="Đã xác nhận email">
         {next}
       </AuthLayout>
     )
@@ -173,9 +177,8 @@ export function ConfirmEmailScreen({ session }: { session: Session }) {
   }
 
   return (
-    <AuthLayout title="Liên kết không còn dùng được" description="Liên kết xác nhận đã hết hạn, đã được thay bằng liên kết mới hơn, hoặc bị cắt khi sao chép." footer={back}>
-      <p className="mb-4 text-sm text-secondary-foreground">Nhập email đã đăng ký để nhận liên kết mới.</p>
-      <ResendForm key={sessionEmail} initialEmail={sessionEmail} />
+    <AuthLayout title="Liên kết không còn dùng được" description="Nhập email đã đăng ký để nhận liên kết mới." footer={back}>
+      <ResendForm key={sessionEmail} initialEmail={sessionEmail} offerSignUp={!signedIn} />
     </AuthLayout>
   )
 }

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { CircleAlert } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -35,7 +36,7 @@ function headline(error: ApiError): { title: string; hint?: string } {
   }
   // Gateway errors: the proxy / load balancer answered but the API behind it did not.
   if (error.status === 502 || error.status === 503 || error.status === 504) {
-    return { title: 'Máy chủ chưa sẵn sàng', hint: 'Máy chủ có thể đang khởi động hoặc bảo trì. Vui lòng thử lại sau ít phút.' }
+    return { title: 'Máy chủ chưa sẵn sàng', hint: 'Vui lòng thử lại sau ít phút.' }
   }
   if (error.status === 401 || error.status === 403) {
     return { title: 'Bạn chưa đăng nhập hoặc không có quyền dùng chức năng này' }
@@ -43,7 +44,7 @@ function headline(error: ApiError): { title: string; hint?: string } {
   if (error.status >= 500) {
     return {
       title: 'Máy chủ gặp sự cố khi tính dự báo',
-      hint: 'Đây không phải lỗi do dữ liệu bạn nhập. Vui lòng thử lại sau ít phút.',
+      hint: 'Vui lòng thử lại sau ít phút.',
     }
   }
   if (error.status >= 400) {
@@ -63,13 +64,10 @@ export function ErrorAlert({ error, onRetry }: ErrorAlertProps) {
   const fieldErrors = Object.entries(problem?.errors ?? {}).flatMap(([field, messages]) =>
     messages.map((message) => ({ field, message })),
   )
-  // The backend's own words, shown verbatim as technical detail (they are not necessarily Vietnamese).
-  const technical = [
-    error.status > 0 ? `HTTP ${error.status}` : null,
-    problem?.detail ?? problem?.title ?? null,
-  ]
-    .filter(Boolean)
-    .join(' · ')
+  // The backend's own words are for support, not the owner: they go to the console, not the screen.
+  useEffect(() => {
+    console.error('Forecast request failed', error.status, error.problem ?? error)
+  }, [error])
 
   return (
     <Alert variant="danger" role="alert">
@@ -86,7 +84,6 @@ export function ErrorAlert({ error, onRetry }: ErrorAlertProps) {
             ))}
           </ul>
         )}
-        {technical && <p className="mt-2 text-xs break-words text-muted-foreground">{technical}</p>}
         <Button type="button" variant="outline" size="sm" className="mt-3" onClick={onRetry}>
           Thử lại
         </Button>

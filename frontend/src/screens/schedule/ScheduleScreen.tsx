@@ -89,11 +89,11 @@ export function ScheduleScreen() {
     <div className="grid gap-6">
       <PageHeader
         title="Lịch thu–chi"
-        description="Ghi số dư thật và mọi khoản sắp chi, sắp thu kèm ngày. Đây là dữ liệu thật của shop: dự báo và kịch bản đều tính từ đây."
+        description="Ghi số dư và các khoản sắp chi, sắp thu kèm ngày."
         actions={
           upcoming.length > 0 && (
             <a href="#du-bao" className={buttonVariants({ variant: 'outline' })}>
-              Xem dự báo 56 ngày
+              Xem dự báo
               <ArrowRight aria-hidden="true" />
             </a>
           )
@@ -118,11 +118,7 @@ export function ScheduleScreen() {
                 <h2 id="overdue-title" className="font-semibold text-shortage">
                   {overdue.length} khoản quá hạn cần ngày mới
                 </h2>
-                <p className="mt-0.5 max-w-3xl text-sm text-secondary-foreground">
-                  Các khoản này hẹn vào hoặc trước ngày {formatDate(balance!.cutoff)} (ngày tính số dư hiện có) nhưng chưa xong. Dự báo{' '}
-                  <strong className="font-semibold text-foreground">không tính</strong> chúng và cũng không coi là đã trả hoặc đã thu: hãy chọn ngày mới, ghi
-                  nhận đã xong, hoặc hủy.
-                </p>
+                <p className="mt-0.5 max-w-3xl text-sm text-secondary-foreground">Dự báo chưa tính các khoản này. Chọn ngày mới, ghi đã xong hoặc hủy.</p>
               </div>
             </div>
             <Rows items={byDate(overdue)} today={today} overdue />
@@ -158,7 +154,7 @@ export function ScheduleScreen() {
                 }
               />
             ) : (
-              <p className="text-sm text-muted-foreground">Lưu số dư ở trên trước, để biết dự báo bắt đầu từ ngày nào.</p>
+              <p className="text-sm text-muted-foreground">Lưu số dư ở trên trước.</p>
             )}
           </section>
         </Card>

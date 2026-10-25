@@ -55,7 +55,6 @@ function AccountMenu({ email, wide }: { email: string; wide: boolean }) {
         <MenuContent side={wide ? 'top' : 'bottom'} align={wide ? 'start' : 'end'} className="w-72">
           <MenuLabel>
             Đăng nhập với <span className="font-medium break-all text-foreground">{email}</span>
-            <span className="mt-1 block">Dữ liệu của shop lưu trên máy chủ FinPilot, theo tài khoản này.</span>
           </MenuLabel>
           <MenuSeparator />
           <MenuItem onSelect={() => (hasData ? setConfirm('demo') : void write((r) => r.replaceAll(demoShop(today))))}>
@@ -224,7 +223,8 @@ export function AppShell({ route, email }: { route: Route; email: string }) {
           </div>
         )}
 
-        <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-8 sm:px-6 lg:px-10 lg:pt-8 lg:pb-10">
+        {/* Bottom padding clears the fixed phone nav. */}
+        <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-24 sm:px-6 lg:px-10 lg:pt-8 lg:pb-10">
           {loadError ? (
             <Alert variant="danger" role="alert">
               <CircleAlert aria-hidden="true" />
@@ -247,13 +247,6 @@ export function AppShell({ route, email }: { route: Route; email: string }) {
             </>
           )}
         </main>
-
-        <footer className="mx-auto w-full max-w-6xl px-4 pb-24 sm:px-6 lg:px-10 lg:pb-8">
-          <p className="border-t pt-4 text-xs text-muted-foreground">
-            FinPilot tính số dư cuối mỗi ngày từ số dư hiện có và các khoản bạn nhập, theo quy tắc cộng trừ cố định. Đây không phải dự báo AI
-            và không bảo đảm tiền về đúng hẹn.
-          </p>
-        </footer>
       </div>
 
       <nav aria-label="Màn hình" className="fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden">

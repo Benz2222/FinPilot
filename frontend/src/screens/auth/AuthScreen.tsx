@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { CircleCheck, Info, LoaderCircle } from 'lucide-react'
+import { CircleCheck, Info, LoaderCircle, MailCheck } from 'lucide-react'
 import type { AuthView } from '@/app/routes'
 import { Field, TextField } from '@/components/fields'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { forgotPassword, register, signIn } from '@/lib/session'
 import { AuthLayout, FormAlert, PasswordInput } from './AuthLayout'
@@ -156,7 +156,6 @@ function RegisterForm({ onRegistered }: { onRegistered: (notice: string) => void
   return (
     <AuthLayout
       title="Tạo tài khoản"
-      description="Mỗi tài khoản quản lý dữ liệu của một shop."
       steps
       footer={
         <>
@@ -226,13 +225,25 @@ function ForgotForm() {
 
   if (sentTo) {
     return (
-      <AuthLayout title="Kiểm tra email" footer={back}>
+      <AuthLayout
+        title="Kiểm tra email"
+        footer={
+          <span className="flex flex-wrap justify-between gap-x-4 gap-y-2">
+            {back}
+            <span>
+              Chưa có tài khoản?{' '}
+              <a href="#dang-ky" className="font-medium text-primary hover:underline">
+                Đăng ký
+              </a>
+            </span>
+          </span>
+        }
+      >
         <Alert variant="success" role="status">
-          <CircleCheck aria-hidden="true" />
-          <AlertTitle>Đã gửi yêu cầu</AlertTitle>
-          <AlertDescription>
-            Nếu <strong className="font-medium break-all text-foreground">{sentTo}</strong> đã đăng ký và đã xác nhận, bạn sẽ nhận được liên kết đặt lại mật
-            khẩu trong vài phút. {SPAM_HINT}
+          <MailCheck aria-hidden="true" />
+          <AlertDescription className="text-foreground">
+            Nếu <strong className="font-medium break-all">{sentTo}</strong> đã có tài khoản và đã xác nhận, FinPilot sẽ gửi liên kết đặt lại mật khẩu trong vài
+            phút. {SPAM_HINT}
           </AlertDescription>
         </Alert>
       </AuthLayout>
@@ -241,10 +252,6 @@ function ForgotForm() {
 
   return (
     <AuthLayout title="Quên mật khẩu" description="Nhập email đã đăng ký. FinPilot sẽ gửi liên kết để bạn đặt mật khẩu mới." footer={back}>
-      <Alert className="mb-5">
-        <Info aria-hidden="true" />
-        <AlertDescription>Liên kết chỉ được gửi tới email đã xác nhận (bấm vào liên kết trong thư gửi khi đăng ký).</AlertDescription>
-      </Alert>
       <FormAlert messages={formErrors} />
       <form onSubmit={submit} noValidate className="grid gap-4">
         <Field id="forgot-email" label="Email">

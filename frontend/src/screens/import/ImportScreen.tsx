@@ -99,7 +99,7 @@ export function ImportScreen() {
   const duplicates = planned.filter((p) => p.valid && p.duplicateOf)
   const cutoff = data?.balance?.cutoff ?? null
   const blockedReason = previous
-    ? `Tệp này đã được nhập lúc ${new Date(previous.committedAt).toLocaleString('vi-VN')}. Không nhập lại được tệp này; hãy sửa các khoản trong Lịch thu–chi hoặc dùng một tệp mới.`
+    ? `Tệp này đã được nhập lúc ${new Date(previous.committedAt).toLocaleString('vi-VN')}. Muốn đổi gì, hãy sửa trong Lịch thu–chi hoặc dùng tệp mới.`
     : toAdd.length === 0
       ? errorRows.length > 0
         ? 'Không có dòng hợp lệ nào để thêm. Sửa tệp rồi tải lên lại.'
@@ -129,10 +129,7 @@ export function ImportScreen() {
 
   return (
     <div className="grid gap-6">
-      <PageHeader
-        title="Nhập từ Excel / CSV"
-        description="Điền các khoản vào tệp mẫu, tải lên, kiểm từng dòng rồi mới ghi vào Lịch thu–chi. Mỗi tệp chỉ ghi được một lần."
-      />
+      <PageHeader title="Nhập từ Excel / CSV" />
 
       <ol aria-label="Các bước nhập" className="flex flex-wrap items-center gap-2 text-sm">
         {STEPS.map((label, i) => {
@@ -173,7 +170,7 @@ export function ImportScreen() {
               <h2 className="mt-1 text-lg font-semibold">Lấy tệp mẫu</h2>
             </div>
             <p className="text-sm leading-relaxed text-secondary-foreground">
-              Sáu cột: Loại (Thu/Chi), Nội dung, Số tiền, Ngày, Đã thanh toán, Ghi chú. Số tiền là số nguyên đồng; ngày dạng 2026-10-29 hoặc 29/10/2026.
+              Mỗi khoản một dòng. Số tiền ghi bằng đồng, ngày ghi dạng 29/10/2026.
             </p>
             <div className="flex flex-wrap gap-2">
               <a href={importTemplateUrl('xlsx')} download className={buttonVariants({ variant: 'outline' })}>
@@ -335,13 +332,13 @@ export function ImportScreen() {
                               }}
                             />
                             <span>
-                              Giống {p.duplicateOf.kind === 'existing' ? `khoản “${p.duplicateOf.label}” đã có trong lịch` : `dòng ${p.duplicateOf.rowNumber} của tệp này`} (cùng
-                              loại, số tiền, ngày, nội dung). Mặc định bỏ qua; đánh dấu nếu đây là khoản khác thật.
+                              Giống {p.duplicateOf.kind === 'existing' ? `khoản “${p.duplicateOf.label}” đã có trong lịch` : `dòng ${p.duplicateOf.rowNumber} của tệp này`}. Sẽ bỏ
+                              qua, trừ khi bạn đánh dấu đây là khoản khác.
                             </span>
                           </label>
                         )}
                         {beforeStart && (
-                          <p className="mt-1 text-xs text-caution">Ngày này không sau ngày {formatDate(cutoff)} (ngày tính số dư hiện có): sẽ hiện là khoản quá hạn cần ngày mới.</p>
+                          <p className="mt-1 text-xs text-caution">Ngày này đã tính trong số dư hiện có nên khoản sẽ thành quá hạn, cần đổi ngày sau khi nhập.</p>
                         )}
                       </div>
                     </div>
@@ -362,7 +359,7 @@ export function ImportScreen() {
                 <p className="num text-2xl font-medium tracking-tight text-primary">{toAdd.length} dòng</p>
               </div>
               {planned.some((p) => p.valid && p.row.paid && p.row.paid !== '0') && (
-                <p className="text-xs text-muted-foreground">Số “Đã thanh toán” được coi là đã nằm trong số dư hiện có; chỉ phần còn lại được đưa vào dự báo.</p>
+                <p className="text-xs text-muted-foreground">Phần “Đã thanh toán” coi như đã nằm trong số dư hiện có.</p>
               )}
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
                 {blockedReason && (

@@ -5,7 +5,6 @@ import { Brand } from '@/components/brand'
 import { FieldError } from '@/components/fields'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
-import { cn } from '@/lib/utils'
 import { Showcase, ShowcaseStrip } from './Showcase'
 
 /**
@@ -51,10 +50,6 @@ export function AuthLayout({
           <div>{children}</div>
           {footer && <p className="border-t pt-5 text-sm text-muted-foreground">{footer}</p>}
         </main>
-        {/* On wide screens without steps the showcase already carries this note. */}
-        <p className={cn('mx-auto max-w-[24rem] text-xs leading-relaxed text-muted-foreground lg:mx-0', !steps && 'lg:hidden')}>
-          FinPilot tính số dư cuối mỗi ngày từ số dư hiện có và các khoản bạn nhập. Không phải dự báo AI.
-        </p>
       </div>
       <aside
         aria-label="FinPilot làm gì"

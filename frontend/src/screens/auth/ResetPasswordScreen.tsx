@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { CircleAlert, CircleCheck, LoaderCircle } from 'lucide-react'
+import { CircleAlert, LoaderCircle } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -43,12 +43,8 @@ export function ResetPasswordScreen() {
 
   if (done) {
     return (
-      <AuthLayout title="Đã đổi mật khẩu">
-        <Alert variant="success" role="status">
-          <CircleCheck aria-hidden="true" />
-          <AlertDescription className="text-foreground">Mật khẩu mới đã được lưu. Đăng nhập bằng mật khẩu mới để tiếp tục.</AlertDescription>
-        </Alert>
-        <a href="/#dang-nhap" className={`${buttonVariants({ size: 'lg' })} mt-5 w-full`}>
+      <AuthLayout title="Đã đổi mật khẩu" description="Đăng nhập bằng mật khẩu mới.">
+        <a href="/#dang-nhap" className={`${buttonVariants({ size: 'lg' })} w-full`}>
           Đăng nhập
         </a>
       </AuthLayout>
@@ -81,7 +77,7 @@ export function ResetPasswordScreen() {
   }
 
   return (
-    <AuthLayout title="Đặt mật khẩu mới" description="Chọn mật khẩu mới cho tài khoản của bạn." footer={login}>
+    <AuthLayout title="Đặt mật khẩu mới" footer={login}>
       <FormAlert messages={formErrors} />
       <form onSubmit={submit} noValidate className="grid gap-4">
         <div>

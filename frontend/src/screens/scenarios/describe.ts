@@ -44,16 +44,16 @@ export function tradeOff(a: Adjustment, byId: Map<string, CashEvent>): string {
   const target = a.kind === 'add' ? null : byId.get(a.targetId)
   switch (a.kind) {
     case 'add':
-      return a.direction === 'Out' ? 'Thêm hàng để bán, nhưng thêm tiền ra trước khi tiền bán về.' : 'Chỉ đúng nếu khoản thu này chắc chắn về.'
+      return a.direction === 'Out' ? 'Thêm hàng để bán, nhưng thêm tiền ra trước khi tiền bán về.' : 'Khoản thu này phải chắc chắn về.'
     case 'split':
       return 'Có thể tốn phí ship nhiều lần, mất chiết khấu số lượng, nhà cung cấp chưa chắc đồng ý.'
     case 'resize':
       return 'Ít hàng hơn để bán; giá nhập mỗi món có thể cao hơn.'
     case 'shift':
       return target?.direction === 'In'
-        ? 'Đây là rủi ro, không phải lựa chọn: xem shop chịu được nếu tiền về trễ không.'
+        ? 'Xem shop có chịu được nếu tiền về trễ không.'
         : 'Có thể hết hàng, lỡ doanh thu trong thời gian chờ.'
     case 'exclude':
-      return target?.direction === 'In' ? 'Xem shop ra sao nếu khoản thu này không về.' : 'Chỉ đúng nếu thật sự không phải chi khoản này.'
+      return target?.direction === 'In' ? 'Xem shop ra sao nếu khoản thu này không về.' : 'Khoản này phải thật sự không cần chi.'
   }
 }

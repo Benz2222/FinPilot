@@ -48,7 +48,7 @@ export function BalanceTicket({ totalIn, totalOut, countIn, countOut }: { totalI
 
   if (!open && balance) {
     return (
-      <section aria-labelledby="balance-title" className="grid gap-2">
+      <section aria-labelledby="balance-title">
         <h2 id="balance-title" className="sr-only">
           Số dư và các khoản sắp tới
         </h2>
@@ -65,13 +65,9 @@ export function BalanceTicket({ totalIn, totalOut, countIn, countOut }: { totalI
               </Button>
             }
           />
-          <Readout label="Sắp thu" signal={countIn ? 'ok' : 'idle'} value={countIn ? `+${formatVnd(totalIn)}` : formatVnd(totalIn)} valueClassName={countIn ? 'text-ok' : undefined} sub={`${countIn} khoản chưa thu`} />
-          <Readout label="Sắp chi" signal="idle" value={countOut ? `−${formatVnd(totalOut)}` : formatVnd(totalOut)} sub={`${countOut} khoản chưa trả`} />
+          <Readout label="Sắp thu" signal={countIn ? 'ok' : 'idle'} value={countIn ? `+${formatVnd(totalIn)}` : formatVnd(totalIn)} valueClassName={countIn ? 'text-ok' : undefined} sub={countIn > 0 && `${countIn} khoản chưa thu`} />
+          <Readout label="Sắp chi" signal="idle" value={countOut ? `−${formatVnd(totalOut)}` : formatVnd(totalOut)} sub={countOut > 0 && `${countOut} khoản chưa trả`} />
         </ReadoutPanel>
-        <p className="text-[0.8125rem] leading-relaxed text-muted-foreground">
-          Số dư này đã gồm mọi khoản thu, chi đến hết ngày {formatDate(balance.cutoff)}. Dự báo tính từ{' '}
-          <span className="num font-medium text-foreground">{formatDate(addDays(balance.cutoff, 1))}</span>; khoản nào hẹn trước ngày đó mà chưa xong sẽ cần ngày mới.
-        </p>
       </section>
     )
   }
@@ -84,8 +80,7 @@ export function BalanceTicket({ totalIn, totalOut, countIn, countOut }: { totalI
           {balance ? 'Cập nhật số dư hiện có' : 'Bắt đầu: nhập số dư hôm nay'}
         </h2>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Cộng tiền ngân hàng và tiền mặt <strong className="font-medium text-foreground">đã về</strong>, tính đến cuối ngày hôm qua (tức đầu ngày hôm nay).
-          Không tính tiền sàn, COD còn đang chờ: những khoản đó nhập ở dưới như khoản sắp thu.
+          Cộng tiền ngân hàng và tiền mặt đang có. Tiền sàn, COD chưa về thì ghi ở dưới thành khoản sắp thu.
         </p>
         <form onSubmit={submit} noValidate className="mt-5 grid gap-4 sm:grid-cols-[minmax(0,1fr)_13rem_auto] sm:items-start">
           <div className="min-w-0">

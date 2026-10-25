@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { ShieldCheck, Sigma } from 'lucide-react'
 import { Led } from '@/components/readout'
 import { cn } from '@/lib/utils'
 
@@ -93,7 +92,7 @@ function DemoInstrument({ compact = false }: { compact?: boolean }) {
     ? { signal: 'ok' as const, text: 'Chia đợt · đủ tiền', cls: 'border-ok-line bg-ok-soft text-ok' }
     : short
       ? { signal: 'shortage' as const, text: 'Thiếu tiền · sau 7 ngày', cls: 'border-shortage bg-shortage-soft text-shortage' }
-      : { signal: 'idle' as const, text: 'Đang tính 56 ngày', cls: 'border-border bg-muted text-muted-foreground' }
+      : { signal: 'idle' as const, text: 'Đang tính…', cls: 'border-border bg-muted text-muted-foreground' }
 
   if (compact) {
     return (
@@ -107,7 +106,7 @@ function DemoInstrument({ compact = false }: { compact?: boolean }) {
           <p className="placard text-muted-foreground">Ví dụ · shop mẫu</p>
           <p className={cn('mt-1 flex items-center gap-1.5 text-sm font-semibold transition-colors', short ? 'text-shortage' : 'text-muted-foreground')}>
             <Led signal={short ? 'shortage' : 'idle'} />
-            {short ? 'Thiếu 5 triệu sau 7 ngày' : 'Đang tính 56 ngày…'}
+            {short ? 'Thiếu 5 triệu sau 7 ngày' : 'Đang tính…'}
           </p>
         </div>
       </div>
@@ -215,15 +214,14 @@ function ShowcaseSummary() {
   )
 }
 
-const STEPS = ['Nhập số tiền đang có hôm nay', 'Ghi các khoản sắp chi, sắp thu', 'Xem 56 ngày tới: ngày nào thiếu, thiếu bao nhiêu']
+const STEPS = ['Nhập số tiền đang có hôm nay', 'Ghi các khoản sắp chi, sắp thu', 'Xem trước ngày nào thiếu tiền']
 
-/** The product side of the sign-in frame: the promise, the example instrument and the honest small print. */
+/** The product side of the sign-in frame: the promise, the example instrument and, on sign-up, the first steps. */
 export function Showcase({ steps = false }: { steps?: boolean }) {
   return (
     <div className="relative flex h-full flex-col justify-center gap-8 px-10 py-12 xl:px-16">
       <div className="max-w-xl">
-        <p className="placard text-primary">Buồng lái dòng tiền · 56 ngày</p>
-        <h2 className="mt-3 text-[2rem] leading-tight font-semibold tracking-tight text-foreground xl:text-[2.375rem]">
+        <h2 className="text-[2rem] leading-tight font-semibold tracking-tight text-foreground xl:text-[2.375rem]">
           Biết trước ngày nào shop thiếu tiền, thiếu bao nhiêu.
         </h2>
         <p className="mt-3 text-lg text-secondary-foreground">Thử phương án nhập hàng trước khi chi tiền thật.</p>
@@ -234,7 +232,7 @@ export function Showcase({ steps = false }: { steps?: boolean }) {
         <ShowcaseSummary />
       </div>
 
-      {steps ? (
+      {steps && (
         <ol className="grid max-w-xl gap-3 sm:grid-cols-3">
           {STEPS.map((s, i) => (
             <li key={s} className="flex gap-3 text-sm text-secondary-foreground">
@@ -243,17 +241,6 @@ export function Showcase({ steps = false }: { steps?: boolean }) {
             </li>
           ))}
         </ol>
-      ) : (
-        <ul className="grid max-w-xl gap-3 text-sm text-secondary-foreground sm:grid-cols-2">
-          <li className="flex gap-3">
-            <Sigma aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
-            Không phải dự báo AI: chỉ cộng trừ từ số dư hiện có và các khoản bạn ghi.
-          </li>
-          <li className="flex gap-3">
-            <ShieldCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
-            Dữ liệu lưu theo tài khoản, mỗi shop tách riêng.
-          </li>
-        </ul>
       )}
     </div>
   )

@@ -41,7 +41,6 @@ export function CreateShopScreen({ email }: { email: string }) {
   return (
     <AuthLayout
       title="Tạo shop của bạn"
-      description="Mỗi tài khoản quản lý một shop. Số dư, lịch thu–chi và kịch bản đều lưu theo shop này."
       steps
       aside={
         <Button variant="ghost" size="sm" onClick={() => void signOut().catch(() => {})}>
