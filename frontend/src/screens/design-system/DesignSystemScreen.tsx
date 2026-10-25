@@ -35,7 +35,7 @@ import { DayTable } from '@/screens/forecast/DayTable'
 import { Verdict } from '@/screens/forecast/Verdict'
 import { ImportPreviewHeader, ImportPreviewRow } from '@/screens/import/ImportPreviewRow'
 import { CheckItem } from '@/screens/landing/Checklist'
-import { CHECKS, FARES, QUESTIONS } from '@/screens/landing/copy'
+import { PLANS, useCopy } from '@/screens/landing/copy'
 import { Flaps } from '@/screens/landing/Departures'
 import { FareCard } from '@/screens/landing/Fares'
 import { FaqItem, RadioWave } from '@/screens/landing/Faq'
@@ -43,6 +43,7 @@ import { FlightPlan, LandingVerdict } from '@/screens/landing/FlightPlan'
 import type { Scenario } from '@/screens/landing/FlightPlan'
 import { SevenSegment } from '@/screens/landing/BlackBox'
 import { RESTOCK_DEFAULT, fly } from '@/screens/landing/model'
+import { LangSwitch } from '@/screens/landing/LangSwitch'
 import { Ticker } from '@/screens/landing/Ticker'
 import { DateMark, ObligationEntry } from '@/screens/schedule/ObligationEntry'
 import { ObligationForm } from '@/screens/schedule/ObligationForm'
@@ -207,6 +208,7 @@ export function DesignSystemScreen() {
   const [sheet, setSheet] = useState(false)
   const [include, setInclude] = useState(true)
   const [scenario, setScenario] = useState<Scenario>({ restock: RESTOCK_DEFAULT, split: false })
+  const landing = useCopy()
   const [checked, setChecked] = useState(true)
   const [flapText, setFlapText] = useState('PAYROLL')
 
@@ -485,13 +487,16 @@ export function DesignSystemScreen() {
 
           <Block id="gioi-thieu" title="Trang giới thiệu">
             <p className="max-w-3xl text-secondary">
-              Tiếng Anh, chỉ dùng ở trang giới thiệu (screens/landing). Số liệu là shop mẫu; các hình ẩn với trình đọc màn hình và có cách đọc riêng. Hiệu ứng tắt khi người xem chọn giảm chuyển động.
+              Tiếng Việt hoặc tiếng Anh, chỉ dùng ở trang giới thiệu (screens/landing; chữ ở copy.ts và copy.vi.ts). Số liệu là shop mẫu; các hình ẩn với trình đọc màn hình và có cách đọc riêng. Hiệu ứng tắt khi người xem chọn giảm chuyển động.
             </p>
+            <Specimen title="Chọn ngôn ngữ" source="screens/landing/LangSwitch.tsx" use="trên đầu trang giới thiệu; nhớ lựa chọn trên trình duyệt, lần đầu theo ngôn ngữ trình duyệt. Các mẫu dưới đây đổi theo." className="p-4 sm:p-5">
+              <LangSwitch />
+            </Specimen>
             <Specimen title="Hình sản phẩm · thử trực tiếp" source="screens/landing/FlightPlan.tsx" use="thanh trượt và nút chọn vẽ lại biểu đồ, kết luận, điểm thấp nhất" className="fp-dots p-4 sm:p-8">
               <FlightPlan flight={fly(scenario.restock, scenario.split)} today={DS_TODAY} onChange={setScenario} className="mx-auto max-w-xl" />
             </Specimen>
             <div className="grid gap-4 lg:grid-cols-2">
-              <Specimen title="Kết luận tiếng Anh" source="FlightPlan.tsx · LandingVerdict" use="cùng lớp .verdict của app" className="grid gap-3 p-4 sm:p-5">
+              <Specimen title="Kết luận" source="FlightPlan.tsx · LandingVerdict" use="cùng lớp .verdict của app" className="grid gap-3 p-4 sm:p-5">
                 <LandingVerdict flight={fly(70_000_000, false)} today={DS_TODAY} />
                 <LandingVerdict flight={fly(70_000_000, true)} today={DS_TODAY} />
               </Specimen>
@@ -534,19 +539,19 @@ export function DesignSystemScreen() {
               </Specimen>
               <Specimen title="Dòng kiểm tra" source="Checklist.tsx · CheckItem" use="nút bật/tắt (aria-pressed)" className="p-0">
                 <div className="fp-clip">
-                  <CheckItem {...CHECKS[0]} checked={checked} onToggle={() => setChecked((c) => !c)} />
+                  <CheckItem {...landing.checklist.checks[0]} checked={checked} onToggle={() => setChecked((c) => !c)} />
                 </div>
               </Specimen>
               <Specimen title="Câu hỏi" source="Faq.tsx · FaqItem, RadioWave" className="grid justify-items-start gap-4 p-4 sm:p-5">
                 <RadioWave />
                 <div className="fp-faq-list w-full">
-                  <FaqItem n={1} q={QUESTIONS[0].q} a={QUESTIONS[0].a} />
+                  <FaqItem n={1} q={landing.faq.questions[0].q} a={landing.faq.questions[0].a} />
                 </div>
               </Specimen>
             </div>
             <Specimen title="Thẻ gói" source="Fares.tsx · FareCard" use="gói giữa là thẻ mực; mọi nút đi tới đăng ký" className="grid gap-6 p-4 pt-8 sm:p-8 md:grid-cols-3">
-              {FARES.map((f, i) => (
-                <FareCard key={f.name} fare={f} billing="month" active={i === 1} reduce={false} />
+              {PLANS.map((p, i) => (
+                <FareCard key={p.name} index={i} billing="month" active={i === 1} reduce={false} />
               ))}
             </Specimen>
           </Block>
