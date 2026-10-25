@@ -115,12 +115,12 @@ public sealed class ShopFixture : WebApplicationFactory<Program>, IAsyncLifetime
 
 public sealed class CapturingEmailDelivery : IEmailDelivery
 {
-    public ConcurrentQueue<(string Email, string Body)> Messages { get; } = new();
+    public ConcurrentQueue<(string Email, string Text, string Html)> Messages { get; } = new();
     public Func<Task>? BeforeSend { get; set; }
-    public async Task Send(string email, string subject, string body, CancellationToken cancellationToken = default)
+    public async Task Send(string email, EmailContent content, CancellationToken cancellationToken = default)
     {
         if (BeforeSend is not null) await BeforeSend();
-        Messages.Enqueue((email, body));
+        Messages.Enqueue((email, content.Text, content.Html));
     }
 }
 
@@ -246,7 +246,7 @@ public sealed class ShopTests(ShopFixture factory) : IClassFixture<ShopFixture>
         var email = $"{Guid.NewGuid():N}@example.test";
         (await client.PostAsJsonAsync("/api/auth/register", new { email, password = "Initial-Password1!" })).EnsureSuccessStatusCode();
         var confirmation = Assert.Single(factory.Mail.Messages, x => x.Email == email);
-        var link = new Uri(System.Text.RegularExpressions.Regex.Match(confirmation.Body, @"https?://\S+").Value);
+        var link = new Uri(System.Text.RegularExpressions.Regex.Match(confirmation.Text, @"https?://\S+").Value);
         Assert.Equal("https://finpilot.test", link.GetLeftPart(UriPartial.Authority));
         (await client.GetAsync($"/api/auth/confirmEmail{link.Query}")).EnsureSuccessStatusCode();
 
@@ -255,9 +255,9 @@ public sealed class ShopTests(ShopFixture factory) : IClassFixture<ShopFixture>
         var otherEmail = $"{Guid.NewGuid():N}@example.test";
         (await client.PostAsJsonAsync("/api/auth/register", new { email = otherEmail, password = "Initial-Password1!" })).EnsureSuccessStatusCode();
         var otherConfirmation = Assert.Single(factory.Mail.Messages, x => x.Email == otherEmail);
-        var otherLink = new Uri(System.Text.RegularExpressions.Regex.Match(otherConfirmation.Body, @"https?://\S+").Value);
+        var otherLink = new Uri(System.Text.RegularExpressions.Regex.Match(otherConfirmation.Text, @"https?://\S+").Value);
         Assert.Equal("finpilot.test", otherLink.Host);
-        Assert.DoesNotContain("attacker.example.test", otherConfirmation.Body);
+        Assert.DoesNotContain("attacker.example.test", otherConfirmation.Text);
     }
 
     private static JsonObject Obligation(Guid? id = null, JsonArray? payments = null) => new()
@@ -399,13 +399,18 @@ public sealed class ShopTests(ShopFixture factory) : IClassFixture<ShopFixture>
         var email = (await client.GetFromJsonAsync<JsonObject>("/api/auth/me"))!["email"]!.GetValue<string>();
         // The registration link opens the web page, which forwards its query to Identity.
         var confirmation = Assert.Single(factory.Mail.Messages, x => x.Email == email);
-        var confirmLink = new Uri(System.Text.RegularExpressions.Regex.Match(confirmation.Body, @"https?://\S+").Value);
+        var confirmLink = new Uri(System.Text.RegularExpressions.Regex.Match(confirmation.Text, @"https?://\S+").Value);
         Assert.Equal("https://finpilot.test/confirm-email", confirmLink.GetLeftPart(UriPartial.Path));
         (await client.GetAsync($"/api/auth/confirmEmail{confirmLink.Query}")).EnsureSuccessStatusCode();
         (await client.PostAsJsonAsync("/api/auth/forgotPassword", new { email })).EnsureSuccessStatusCode();
-        var message = Assert.Single(factory.Mail.Messages, x => x.Email == email && x.Body.Contains("/reset-password?"));
-        var link = new Uri(System.Text.RegularExpressions.Regex.Match(message.Body, @"https?://\S+").Value);
+        var message = Assert.Single(factory.Mail.Messages, x => x.Email == email && x.Text.Contains("/reset-password?"));
+        var link = new Uri(System.Text.RegularExpressions.Regex.Match(message.Text, @"https?://\S+").Value);
         Assert.Equal("/reset-password", link.AbsolutePath);
+        // The HTML part's button and fallback link carry the text part's link, HTML-encoded.
+        var hrefs = System.Text.RegularExpressions.Regex.Matches(message.Html, "href=\"([^\"]*)\"")
+            .Select(m => m.Groups[1].Value).Where(h => h != "https://finpilot.test");
+        var encoded = WebUtility.HtmlEncode(link.OriginalString);
+        Assert.Equal([encoded, encoded], hrefs);
         var query = QueryHelpers.ParseQuery(link.Query);
         Assert.Equal(email, query["email"]);
         (await client.PostAsJsonAsync("/api/auth/logout", new { })).EnsureSuccessStatusCode();
