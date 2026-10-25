@@ -1,14 +1,17 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { ShopProvider } from '@/app/shop-context'
 import { AppShell } from '@/app/AppShell'
 import { readAuthView, readRoute } from '@/app/routes'
 import type { AuthView, Route } from '@/app/routes'
 import { AuthScreen } from '@/screens/auth/AuthScreen'
-import { ConfirmEmailScreen } from '@/screens/auth/ConfirmEmailScreen'
-import { ResetPasswordScreen } from '@/screens/auth/ResetPasswordScreen'
 import { Loading } from '@/components/page'
-import { Button } from '@/components/ui/button'
+import { Button } from '@astryxdesign/core/Button'
 import { checkSession, getSession, subscribeSession } from '@/lib/session'
+
+// The design-system reference loads on its own so customers never download it.
+const ConfirmEmailScreen = lazy(() => import('@/screens/auth/ConfirmEmailScreen').then((m) => ({ default: m.ConfirmEmailScreen })))
+const ResetPasswordScreen = lazy(() => import('@/screens/auth/ResetPasswordScreen').then((m) => ({ default: m.ResetPasswordScreen })))
+const DesignSystemScreen = lazy(() => import('@/screens/design-system/DesignSystemScreen').then((m) => ({ default: m.DesignSystemScreen })))
 
 /** First check of the cookie session; a network failure offers a retry instead of a login form. */
 function useSessionCheck() {
@@ -43,17 +46,31 @@ export default function App() {
   }, [])
 
   // The links from the emails work whether or not someone is signed in on this browser.
-  if (window.location.pathname === '/reset-password') return <ResetPasswordScreen />
-  if (window.location.pathname === '/confirm-email') return <ConfirmEmailScreen session={session} />
+  if (window.location.pathname === '/reset-password')
+    return (
+      <Suspense fallback={<Loading className="min-h-svh" />}>
+        <ResetPasswordScreen />
+      </Suspense>
+    )
+  if (window.location.pathname === '/confirm-email')
+    return (
+      <Suspense fallback={<Loading className="min-h-svh" />}>
+        <ConfirmEmailScreen session={session} />
+      </Suspense>
+    )
+  if (window.location.pathname === '/design-system')
+    return (
+      <Suspense fallback={<Loading className="min-h-svh" />}>
+        <DesignSystemScreen />
+      </Suspense>
+    )
 
   if (session.status === 'checking') {
     return failed ? (
       <div className="grid min-h-svh place-content-center justify-items-center gap-3 p-6 text-center">
         <p className="font-semibold">Không kết nối được máy chủ</p>
-        <p className="text-sm text-muted-foreground">Kiểm tra kết nối mạng rồi thử lại.</p>
-        <Button variant="outline" onClick={retry}>
-          Thử lại
-        </Button>
+        <p className="text-sm text-secondary">Kiểm tra kết nối mạng rồi thử lại.</p>
+        <Button variant="secondary" label="Thử lại" onClick={retry} />
       </div>
     ) : (
       <Loading className="min-h-svh">Đang mở FinPilot…</Loading>

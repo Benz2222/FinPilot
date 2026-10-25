@@ -1,8 +1,8 @@
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { MoneyInput } from '@/components/MoneyInput'
-import { DateInput, Field, TextField } from '@/components/fields'
-import { Button } from '@/components/ui/button'
+import { Button } from '@astryxdesign/core/Button'
+import { DateInput, Field, Select, TextField } from '@/components/fields'
 import { formatDayMonth, isValidIsoDate } from '@/lib/date'
 import { newId } from '@/lib/id'
 import { compareMoney, formatVnd, isZero, subtractMoney } from '@/lib/money'
@@ -10,9 +10,6 @@ import type { Adjustment } from '@/lib/shop'
 import type { CashEvent } from '@/lib/types'
 import type { PresetId } from './describe'
 import { PRESETS } from './describe'
-
-const select =
-  'h-11 w-full min-w-0 rounded-md border border-input bg-glass px-3 text-base text-foreground outline-none hover:border-input-hover focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/25 aria-invalid:border-destructive sm:h-10 sm:text-sm'
 
 /** Builds one adjustment of the chosen preset over the real schedule's open lines. */
 export function AdjustmentForm({
@@ -95,24 +92,19 @@ export function AdjustmentForm({
 
   if (preset !== 'add' && candidates.length === 0) {
     return (
-      <div className="rounded-lg border bg-glass p-4 text-sm">
+      <div className="fp-well grid justify-items-start gap-2 p-4 text-sm">
         <p>Lịch chưa có khoản {wantsIn ? 'thu' : preset === 'exclude' ? '' : 'chi'} nào còn mở để thử.</p>
-        <Button variant="link" onClick={onCancel} className="mt-1 h-auto p-0">
-          Đóng
-        </Button>
+        <Button variant="secondary" size="sm" label="Đóng" onClick={onCancel} />
       </div>
     )
   }
 
   return (
-    <form onSubmit={submit} noValidate className="grid gap-3.5 rounded-lg border border-primary/40 bg-glass p-4" aria-label={title}>
-      <p className="placard text-primary">{title}</p>
-      {initial && <p className="-mt-2 text-xs text-muted-foreground">Số gợi ý, sửa tùy ý.</p>}
+    <form onSubmit={submit} noValidate className="fp-well grid gap-3.5 p-4" aria-label={title}>
+      <h3 className="font-bold">{title}</h3>
       {preset === 'add' ? (
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field id={f('label')} label="Nội dung" error={shown.label}>
-            <TextField id={f('label')} value={label} onChange={(e) => setLabel(e.target.value)} maxLength={200} {...invalid('label')} />
-          </Field>
+          <TextField id={f('label')} label="Nội dung" value={label} onChange={setLabel} maxLength={200} error={shown.label} />
           <Field id={f('amount')} label="Số tiền" error={undefined}>
             <MoneyInput id={f('amount')} value={amount} onValueChange={setAmount} error={shown.amount} />
           </Field>
@@ -122,13 +114,13 @@ export function AdjustmentForm({
         </div>
       ) : (
         <Field id={f('target')} label={wantsIn ? 'Khoản thu' : 'Khoản'} error={shown.target}>
-          <select id={f('target')} value={targetId} onChange={(e) => setTargetId(e.target.value)} className={select} {...invalid('target')}>
+          <Select id={f('target')} value={targetId} onChange={(e) => setTargetId(e.target.value)} {...invalid('target')}>
             {candidates.map((e) => (
               <option key={e.id} value={e.id}>
                 {e.label} · {formatVnd(e.amount)} · {formatDayMonth(e.date)}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       )}
 
@@ -151,8 +143,8 @@ export function AdjustmentForm({
             <DateInput id={f('date')} value={date} onChange={(e) => setDate(e.target.value)} invalid={Boolean(shown.date)} describedBy={`${f('date')}-error`} />
           </Field>
           <div className="min-w-0">
-            <p className="mb-1.5 text-sm font-medium text-secondary-foreground">Đợt 2: phần còn lại</p>
-            <p className="num flex h-11 items-center justify-end rounded-md border border-dashed border-input/70 px-3 font-medium sm:h-10" aria-live="polite">
+            <p className="mb-1.5 text-[length:var(--text-label-size)] font-medium text-secondary">Đợt 2: phần còn lại</p>
+            <p className="num flex h-[var(--size-element-lg)] items-center justify-end rounded-[var(--radius-element)] border border-dashed border-[var(--color-border-emphasized)] px-3 font-semibold" aria-live="polite">
               {rest ? formatVnd(rest) : '—'}
             </p>
           </div>
@@ -163,10 +155,8 @@ export function AdjustmentForm({
       )}
 
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" size="lg">Thêm giả định</Button>
-        <Button type="button" variant="ghost" size="lg" onClick={onCancel}>
-          Hủy
-        </Button>
+        <Button type="submit" variant="primary" size="lg" label="Thêm giả định" />
+        <Button type="button" variant="ghost" size="lg" label="Hủy" onClick={onCancel} />
       </div>
     </form>
   )

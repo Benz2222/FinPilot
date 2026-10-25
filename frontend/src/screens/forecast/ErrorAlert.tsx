@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
-import { CircleAlert } from 'lucide-react'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
+import { Banner } from '@astryxdesign/core/Banner'
+import { Button } from '@astryxdesign/core/Button'
 import type { ApiError } from '@/lib/api'
 
 const FIELD_NAMES: Record<string, string> = {
@@ -70,24 +69,24 @@ export function ErrorAlert({ error, onRetry }: ErrorAlertProps) {
   }, [error])
 
   return (
-    <Alert variant="danger" role="alert">
-      <CircleAlert aria-hidden="true" />
-      <AlertTitle className="text-shortage">{title}</AlertTitle>
-      <AlertDescription>
-        {hint && <p>{hint}</p>}
-        {fieldErrors.length > 0 && (
-          <ul className="mt-2 list-disc space-y-0.5 pl-4">
+    <div role="alert">
+      <Banner
+        status="error"
+        title={title}
+        description={hint}
+        collapsible={false}
+        endContent={<Button label="Thử lại" size="sm" onClick={onRetry} />}
+      >
+        {fieldErrors.length > 0 ? (
+          <ul className="list-disc space-y-0.5 pl-4 text-sm">
             {fieldErrors.map(({ field, message }, i) => (
               <li key={`${field}-${i}`}>
                 <span className="font-medium">{describeField(field)}:</span> {message}
               </li>
             ))}
           </ul>
-        )}
-        <Button type="button" variant="outline" size="sm" className="mt-3" onClick={onRetry}>
-          Thử lại
-        </Button>
-      </AlertDescription>
-    </Alert>
+        ) : undefined}
+      </Banner>
+    </div>
   )
 }

@@ -1,11 +1,9 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { CircleAlert, LoaderCircle } from 'lucide-react'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Button, buttonVariants } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Button } from '@astryxdesign/core/Button'
+import { PasswordField, TextField } from '@/components/fields'
 import { resetPassword } from '@/lib/session'
-import { AuthLayout, FormAlert, PasswordInput } from './AuthLayout'
+import { AuthLayout, AuthLink, FormAlert, Notice } from './AuthLayout'
 import { PASSWORD_HINT, authProblems } from './messages'
 
 /** `/reset-password?email=..&code=..`, opened from the email. */
@@ -20,33 +18,23 @@ export function ResetPasswordScreen() {
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
 
-  const login = (
-    <a href="/#dang-nhap" className="font-medium text-primary hover:underline">
-      Quay lại đăng nhập
-    </a>
-  )
+  const login = <AuthLink href="/#dang-nhap">Quay lại đăng nhập</AuthLink>
 
   if (!email || !code) {
     return (
       <AuthLayout title="Đặt mật khẩu mới" footer={login}>
-        <Alert variant="danger">
-          <CircleAlert aria-hidden="true" />
-          <AlertTitle>Liên kết không đầy đủ</AlertTitle>
-          <AlertDescription>Mở lại liên kết trong email, hoặc yêu cầu một liên kết mới.</AlertDescription>
-        </Alert>
-        <a href="/#quen-mat-khau" className={`${buttonVariants({ variant: 'outline' })} mt-5 w-full`}>
-          Yêu cầu liên kết mới
-        </a>
+        <Notice status="error" title="Liên kết không đầy đủ">
+          Mở lại liên kết trong email, hoặc yêu cầu một liên kết mới.
+        </Notice>
+        <Button size="lg" label="Yêu cầu liên kết mới" href="/#quen-mat-khau" className="w-full" />
       </AuthLayout>
     )
   }
 
   if (done) {
     return (
-      <AuthLayout title="Đã đổi mật khẩu" description="Đăng nhập bằng mật khẩu mới.">
-        <a href="/#dang-nhap" className={`${buttonVariants({ size: 'lg' })} w-full`}>
-          Đăng nhập
-        </a>
+      <AuthLayout title="Đã đổi mật khẩu">
+        <Button variant="primary" size="lg" label="Đăng nhập" href="/#dang-nhap" className="w-full" />
       </AuthLayout>
     )
   }
@@ -80,31 +68,10 @@ export function ResetPasswordScreen() {
     <AuthLayout title="Đặt mật khẩu mới" footer={login}>
       <FormAlert messages={formErrors} />
       <form onSubmit={submit} noValidate className="grid gap-4">
-        <div>
-          <label htmlFor="reset-email" className="mb-1.5 block text-sm font-medium text-secondary-foreground">
-            Email
-          </label>
-          <Input id="reset-email" value={email} readOnly disabled autoComplete="username" />
-        </div>
-        <div>
-          <label htmlFor="reset-password" className="mb-1.5 block text-sm font-medium text-secondary-foreground">
-            Mật khẩu mới
-          </label>
-          <PasswordInput id="reset-password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} error={errors.password} />
-          {!errors.password && (
-            <p className="mt-1.5 text-[0.8125rem] text-muted-foreground">{PASSWORD_HINT}</p>
-          )}
-        </div>
-        <div>
-          <label htmlFor="reset-confirm" className="mb-1.5 block text-sm font-medium text-secondary-foreground">
-            Nhập lại mật khẩu mới
-          </label>
-          <PasswordInput id="reset-confirm" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} error={errors.confirm} />
-        </div>
-        <Button type="submit" size="lg" className="w-full" disabled={busy}>
-          {busy && <LoaderCircle aria-hidden="true" className="motion-safe:animate-spin" />}
-          Đặt lại mật khẩu
-        </Button>
+        <TextField id="reset-email" label="Email" value={email} onChange={() => {}} isDisabled autoComplete="username" />
+        <PasswordField id="reset-password" label="Mật khẩu mới" autoComplete="new-password" value={password} onChange={setPassword} error={errors.password} hint={PASSWORD_HINT} />
+        <PasswordField id="reset-confirm" label="Nhập lại mật khẩu mới" autoComplete="new-password" value={confirm} onChange={setConfirm} error={errors.confirm} />
+        <Button type="submit" variant="primary" size="lg" label="Đặt lại mật khẩu" isLoading={busy} className="w-full" />
       </form>
     </AuthLayout>
   )

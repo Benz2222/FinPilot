@@ -10,7 +10,7 @@ export function DirectionBadge({ direction }: { direction: CashEvent['direction'
       Thu
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1 text-muted-foreground">
+    <span className="inline-flex items-center gap-1 text-secondary">
       <ArrowUpRight aria-hidden="true" className="size-3.5" />
       Chi
     </span>
@@ -20,7 +20,7 @@ export function DirectionBadge({ direction }: { direction: CashEvent['direction'
 /** Compact list of cash events (the "not counted" lists); wraps instead of scrolling on phones. */
 export function EventList({ events }: { events: CashEvent[] }) {
   return (
-    <ul className="divide-y text-foreground">
+    <ul className="divide-y text-primary">
       {events.map((event) => (
         <li key={event.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-1.5">
           <span className="min-w-0 break-words">

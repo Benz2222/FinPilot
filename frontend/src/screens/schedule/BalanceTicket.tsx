@@ -4,12 +4,13 @@ import { FileSpreadsheet, PencilLine, Sparkles } from 'lucide-react'
 import { useShop } from '@/app/use-shop'
 import { demoShop } from '@/lib/demo'
 import { MoneyInput } from '@/components/MoneyInput'
+import { Button } from '@astryxdesign/core/Button'
+import { Icon } from '@astryxdesign/core/Icon'
 import { DateInput, Field, FieldLabel } from '@/components/fields'
-import { Button, buttonVariants } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-import { Readout, ReadoutPanel } from '@/components/readout'
+import { Panel } from '@/components/page'
+import { StatGrid, StatTile } from '@/components/readout'
 import { addDays, formatDate, isValidIsoDate } from '@/lib/date'
-import { formatVnd } from '@/lib/money'
+import { formatVnd, isNegative } from '@/lib/money'
 import type { Money } from '@/lib/types'
 
 /**
@@ -52,84 +53,56 @@ export function BalanceTicket({ totalIn, totalOut, countIn, countOut }: { totalI
         <h2 id="balance-title" className="sr-only">
           Số dư và các khoản sắp tới
         </h2>
-        <ReadoutPanel className="sm:grid-cols-3">
-          <Readout
+        <StatGrid className="sm:grid-cols-3">
+          <StatTile
             label="Số dư hiện có"
-            signal="info"
             value={formatVnd(balance.amount)}
+            negative={isNegative(balance.amount)}
             sub={`Tính đến hết ngày ${formatDate(balance.cutoff)}`}
-            action={
-              <Button variant="ghost" size="sm" className="-my-2 -mr-2 text-primary hover:text-primary" onClick={start}>
-                <PencilLine aria-hidden="true" />
-                Cập nhật số dư
-              </Button>
-            }
+            action={<Button variant="secondary" size="sm" label="Cập nhật số dư" icon={<Icon icon={PencilLine} />} onClick={start} />}
           />
-          <Readout label="Sắp thu" signal={countIn ? 'ok' : 'idle'} value={countIn ? `+${formatVnd(totalIn)}` : formatVnd(totalIn)} valueClassName={countIn ? 'text-ok' : undefined} sub={countIn > 0 && `${countIn} khoản chưa thu`} />
-          <Readout label="Sắp chi" signal="idle" value={countOut ? `−${formatVnd(totalOut)}` : formatVnd(totalOut)} sub={countOut > 0 && `${countOut} khoản chưa trả`} />
-        </ReadoutPanel>
+          <StatTile label="Sắp thu" value={countIn ? `+${formatVnd(totalIn)}` : formatVnd(totalIn)} sub={countIn > 0 && `${countIn} khoản chưa thu`} />
+          <StatTile label="Sắp chi" value={countOut ? `−${formatVnd(totalOut)}` : formatVnd(totalOut)} sub={countOut > 0 && `${countOut} khoản chưa trả`} />
+        </StatGrid>
       </section>
     )
   }
 
   return (
-    <Card>
-      <section aria-labelledby="balance-form-title" className="p-4 sm:p-6">
-        <p className="placard text-primary">{balance ? 'Số dư' : 'Bước 1 / 2'}</p>
-        <h2 id="balance-form-title" className="mt-2 text-lg font-semibold">
-          {balance ? 'Cập nhật số dư hiện có' : 'Bắt đầu: nhập số dư hôm nay'}
-        </h2>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Cộng tiền ngân hàng và tiền mặt đang có. Tiền sàn, COD chưa về thì ghi ở dưới thành khoản sắp thu.
-        </p>
-        <form onSubmit={submit} noValidate className="mt-5 grid gap-4 sm:grid-cols-[minmax(0,1fr)_13rem_auto] sm:items-start">
-          <div className="min-w-0">
-            <FieldLabel htmlFor="balance-amount">Số dư hiện có (ngân hàng + tiền mặt)</FieldLabel>
-            <MoneyInput
-              id="balance-amount"
-              value={amount}
-              onValueChange={setAmount}
-              error={showErrors ? errors.amount : undefined}
-              placeholder="VD: 50.000.000"
-              className="h-12 text-lg font-semibold sm:h-12 sm:text-lg"
-            />
-          </div>
-          <Field id="balance-cutoff" label="Tính đến hết ngày" error={showErrors ? errors.cutoff : undefined}>
-            <DateInput
-              id="balance-cutoff"
-              value={cutoff}
-              max={today}
-              onChange={(e) => setCutoff(e.target.value)}
-              invalid={showErrors && Boolean(errors.cutoff)}
-              describedBy="balance-cutoff-error"
-              className="h-12 sm:h-12"
-            />
-          </Field>
-          <div className="flex gap-2 sm:pt-7">
-            <Button type="submit" size="lg" className="flex-1 sm:flex-none">
-              Lưu số dư
-            </Button>
-            {balance && (
-              <Button type="button" variant="ghost" size="lg" onClick={() => setEditing(false)}>
-                Hủy
-              </Button>
-            )}
-          </div>
-        </form>
-        {!balance && (
-          <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 border-t pt-4 text-sm text-muted-foreground">
-            Chưa sẵn số liệu?
-            <Button type="button" variant="outline" size="sm" onClick={() => void write((r) => r.replaceAll(demoShop(today)))}>
-              <Sparkles aria-hidden="true" />
-              Xem ví dụ shop mẫu
-            </Button>
-            <a href="#nhap-file" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
-              <FileSpreadsheet aria-hidden="true" />
-              Nhập từ file Excel/CSV
-            </a>
-          </div>
-        )}
-      </section>
-    </Card>
+    <Panel title={balance ? 'Cập nhật số dư hiện có' : 'Nhập số dư hôm nay'} titleId="balance-form-title">
+      <form onSubmit={submit} noValidate className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_13rem_auto] sm:items-start">
+        <div className="min-w-0">
+          <FieldLabel htmlFor="balance-amount">Số dư hiện có (ngân hàng + tiền mặt)</FieldLabel>
+          <MoneyInput
+            id="balance-amount"
+            value={amount}
+            onValueChange={setAmount}
+            error={showErrors ? errors.amount : undefined}
+            placeholder="VD: 50.000.000"
+            className="fp-input-lg"
+          />
+        </div>
+        <Field id="balance-cutoff" label="Tính đến hết ngày" error={showErrors ? errors.cutoff : undefined}>
+          <DateInput
+            id="balance-cutoff"
+            value={cutoff}
+            max={today}
+            onChange={(e) => setCutoff(e.target.value)}
+            invalid={showErrors && Boolean(errors.cutoff)}
+            describedBy="balance-cutoff-error"
+          />
+        </Field>
+        <div className="flex gap-2 sm:pt-7">
+          <Button type="submit" variant="primary" size="lg" label="Lưu số dư" className="flex-1 sm:flex-none" />
+          {balance && <Button type="button" variant="ghost" size="lg" label="Hủy" onClick={() => setEditing(false)} />}
+        </div>
+      </form>
+      {!balance && (
+        <div className="mt-5 flex flex-wrap gap-2 border-t pt-4">
+          <Button size="sm" label="Xem ví dụ shop mẫu" icon={<Icon icon={Sparkles} />} onClick={() => void write((r) => r.replaceAll(demoShop(today)))} />
+          <Button size="sm" label="Nhập từ file Excel/CSV" icon={<Icon icon={FileSpreadsheet} />} href="#nhap-file" />
+        </div>
+      )}
+    </Panel>
   )
 }

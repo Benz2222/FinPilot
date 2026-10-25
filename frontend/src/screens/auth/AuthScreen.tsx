@@ -1,12 +1,10 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { CircleCheck, Info, LoaderCircle, MailCheck } from 'lucide-react'
+import { Button } from '@astryxdesign/core/Button'
 import type { AuthView } from '@/app/routes'
-import { Field, TextField } from '@/components/fields'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
+import { FieldError, FieldLabel, PasswordField, PasswordInput, TextField } from '@/components/fields'
 import { forgotPassword, register, signIn } from '@/lib/session'
-import { AuthLayout, FormAlert, PasswordInput } from './AuthLayout'
+import { AuthLayout, AuthLink, FormAlert, Notice } from './AuthLayout'
 import { EMAIL, PASSWORD_HINT, SPAM_HINT, authProblems } from './messages'
 import type { AuthProblem } from './messages'
 
@@ -31,13 +29,8 @@ function enterApp() {
   if (/^#(dang-nhap|dang-ky|quen-mat-khau)$/.test(window.location.hash)) window.history.replaceState(null, '', '#lich')
 }
 
-function SubmitButton({ busy, children }: { busy: boolean; children: string }) {
-  return (
-    <Button type="submit" size="lg" className="w-full" disabled={busy}>
-      {busy && <LoaderCircle aria-hidden="true" className="motion-safe:animate-spin" />}
-      {children}
-    </Button>
-  )
+function SubmitButton({ busy, label }: { busy: boolean; label: string }) {
+  return <Button type="submit" variant="primary" size="lg" label={label} isLoading={busy} className="w-full" />
 }
 
 function LoginForm({ expired, notice }: { expired: boolean; notice: string | null }) {
@@ -71,45 +64,28 @@ function LoginForm({ expired, notice }: { expired: boolean; notice: string | nul
   return (
     <AuthLayout
       title="Đăng nhập"
-      description="Theo dõi lịch thu–chi và biết trước ngày shop thiếu tiền."
       footer={
         <>
-          Chưa có tài khoản?{' '}
-          <a href="#dang-ky" className="font-medium text-primary hover:underline">
-            Đăng ký
-          </a>
+          Chưa có tài khoản? <AuthLink href="#dang-ky">Đăng ký</AuthLink>
         </>
       }
     >
-      {expired && (
-        <Alert variant="warning" className="mb-5">
-          <Info aria-hidden="true" />
-          <AlertDescription className="text-foreground">Phiên đăng nhập đã hết. Vui lòng đăng nhập lại để tiếp tục.</AlertDescription>
-        </Alert>
-      )}
-      {notice && (
-        <Alert variant="success" className="mb-5">
-          <CircleCheck aria-hidden="true" />
-          <AlertDescription className="text-foreground">{notice}</AlertDescription>
-        </Alert>
-      )}
+      {expired && <Notice status="warning" title="Phiên đăng nhập đã hết. Vui lòng đăng nhập lại để tiếp tục." />}
+      {notice && <Notice status="success" title={notice} />}
       <FormAlert messages={formErrors} />
       <form onSubmit={submit} noValidate className="grid gap-4">
-        <Field id="login-email" label="Email">
-          <TextField id="login-email" type="email" autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} />
-        </Field>
+        <TextField id="login-email" label="Email" type="email" autoComplete="email" inputMode="email" value={email} onChange={setEmail} error={errors.email} />
         <div>
-          <div className="mb-1.5 flex items-baseline justify-between gap-2">
-            <label htmlFor="login-password" className="text-sm font-medium text-secondary-foreground">
-              Mật khẩu
-            </label>
-            <a href="#quen-mat-khau" className="text-sm font-medium text-primary hover:underline">
+          <div className="flex items-baseline justify-between gap-2">
+            <FieldLabel htmlFor="login-password">Mật khẩu</FieldLabel>
+            <a href="#quen-mat-khau" className="mb-1.5 text-sm font-semibold text-accent underline-offset-4 hover:underline">
               Quên mật khẩu?
             </a>
           </div>
-          <PasswordInput id="login-password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} error={errors.password} />
+          <PasswordInput id="login-password" autoComplete="current-password" value={password} onChange={setPassword} error={errors.password} />
+          <FieldError id="login-password-error" message={errors.password} />
         </div>
-        <SubmitButton busy={busy}>Đăng nhập</SubmitButton>
+        <SubmitButton busy={busy} label="Đăng nhập" />
       </form>
     </AuthLayout>
   )
@@ -156,35 +132,18 @@ function RegisterForm({ onRegistered }: { onRegistered: (notice: string) => void
   return (
     <AuthLayout
       title="Tạo tài khoản"
-      steps
       footer={
         <>
-          Đã có tài khoản?{' '}
-          <a href="#dang-nhap" className="font-medium text-primary hover:underline">
-            Đăng nhập
-          </a>
+          Đã có tài khoản? <AuthLink href="#dang-nhap">Đăng nhập</AuthLink>
         </>
       }
     >
       <FormAlert messages={formErrors} />
       <form onSubmit={submit} noValidate className="grid gap-4">
-        <Field id="register-email" label="Email">
-          <TextField id="register-email" type="email" autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} />
-        </Field>
-        <div>
-          <label htmlFor="register-password" className="mb-1.5 block text-sm font-medium text-secondary-foreground">
-            Mật khẩu
-          </label>
-          <PasswordInput id="register-password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} error={errors.password} />
-          {!errors.password && <p className="mt-1.5 text-[0.8125rem] text-muted-foreground">{PASSWORD_HINT}</p>}
-        </div>
-        <div>
-          <label htmlFor="register-confirm" className="mb-1.5 block text-sm font-medium text-secondary-foreground">
-            Nhập lại mật khẩu
-          </label>
-          <PasswordInput id="register-confirm" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} error={errors.confirm} />
-        </div>
-        <SubmitButton busy={busy}>Tạo tài khoản</SubmitButton>
+        <TextField id="register-email" label="Email" type="email" autoComplete="email" inputMode="email" value={email} onChange={setEmail} error={errors.email} />
+        <PasswordField id="register-password" label="Mật khẩu" autoComplete="new-password" value={password} onChange={setPassword} error={errors.password} hint={PASSWORD_HINT} />
+        <PasswordField id="register-confirm" label="Nhập lại mật khẩu" autoComplete="new-password" value={confirm} onChange={setConfirm} error={errors.confirm} />
+        <SubmitButton busy={busy} label="Tạo tài khoản" />
       </form>
     </AuthLayout>
   )
@@ -217,11 +176,7 @@ function ForgotForm() {
     }
   }
 
-  const back = (
-    <a href="#dang-nhap" className="font-medium text-primary hover:underline">
-      Quay lại đăng nhập
-    </a>
-  )
+  const back = <AuthLink href="#dang-nhap">Quay lại đăng nhập</AuthLink>
 
   if (sentTo) {
     return (
@@ -231,33 +186,31 @@ function ForgotForm() {
           <span className="flex flex-wrap justify-between gap-x-4 gap-y-2">
             {back}
             <span>
-              Chưa có tài khoản?{' '}
-              <a href="#dang-ky" className="font-medium text-primary hover:underline">
-                Đăng ký
-              </a>
+              Chưa có tài khoản? <AuthLink href="#dang-ky">Đăng ký</AuthLink>
             </span>
           </span>
         }
       >
-        <Alert variant="success" role="status">
-          <MailCheck aria-hidden="true" />
-          <AlertDescription className="text-foreground">
-            Nếu <strong className="font-medium break-all">{sentTo}</strong> đã có tài khoản và đã xác nhận, FinPilot sẽ gửi liên kết đặt lại mật khẩu trong vài
-            phút. {SPAM_HINT}
-          </AlertDescription>
-        </Alert>
+        <Notice
+          status="success"
+          title={
+            <>
+              Nếu <span className="break-all">{sentTo}</span> đã có tài khoản và đã xác nhận, FinPilot sẽ gửi liên kết đặt lại mật khẩu trong vài phút.
+            </>
+          }
+        >
+          {SPAM_HINT}
+        </Notice>
       </AuthLayout>
     )
   }
 
   return (
-    <AuthLayout title="Quên mật khẩu" description="Nhập email đã đăng ký. FinPilot sẽ gửi liên kết để bạn đặt mật khẩu mới." footer={back}>
+    <AuthLayout title="Quên mật khẩu" footer={back}>
       <FormAlert messages={formErrors} />
       <form onSubmit={submit} noValidate className="grid gap-4">
-        <Field id="forgot-email" label="Email">
-          <TextField id="forgot-email" type="email" autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} error={error} />
-        </Field>
-        <SubmitButton busy={busy}>Gửi liên kết đặt lại</SubmitButton>
+        <TextField id="forgot-email" label="Email" type="email" autoComplete="email" inputMode="email" value={email} onChange={setEmail} error={error} />
+        <SubmitButton busy={busy} label="Gửi liên kết đặt lại" />
       </form>
     </AuthLayout>
   )

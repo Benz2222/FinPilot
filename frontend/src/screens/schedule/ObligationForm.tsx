@@ -2,8 +2,8 @@ import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useShop } from '@/app/use-shop'
 import { MoneyInput } from '@/components/MoneyInput'
-import { DateInput, DirectionToggle, FieldError, FieldLabel, TextField } from '@/components/fields'
-import { Button } from '@/components/ui/button'
+import { Button } from '@astryxdesign/core/Button'
+import { Chip, DateInput, DirectionToggle, Field, FieldLabel, TextField } from '@/components/fields'
 import { addDays, formatDayMonth, isValidIsoDate } from '@/lib/date'
 import { MAX_MONEY_DIGITS } from '@/lib/money'
 import { validateDraft } from '@/lib/shop'
@@ -13,9 +13,6 @@ const NAME_CHIPS = {
   Out: ['Nhập hàng', 'Lương', 'Thuê mặt bằng', 'Quảng cáo', 'Phí ship'],
   In: ['Tiền sàn', 'COD', 'Khách trả nợ'],
 } as const
-
-const chip =
-  'inline-flex h-9 items-center gap-1.5 rounded-full border border-input/70 bg-glass px-3 text-[0.8125rem] font-medium text-secondary-foreground transition-colors hover:border-input hover:text-foreground aria-pressed:border-primary aria-pressed:bg-primary-soft aria-pressed:text-primary'
 
 /**
  * One obligation: direction, amount, what it is and when. Amount first, with a 000 key, name chips and date
@@ -90,86 +87,77 @@ export function ObligationForm({
                 onValueChange={(amount) => setDraft({ ...draft, amount })}
                 error={visible.amount}
                 placeholder="0"
-                className="h-12 text-lg font-semibold sm:h-12 sm:text-lg"
+                className="fp-input-lg"
               />
             </div>
             <Button
               type="button"
-              variant="outline"
+              size="lg"
+              label="000"
+              tooltip="Thêm ba số 0"
               aria-label="Thêm ba số 0"
-              disabled={!draft.amount || draft.amount.length + 3 > MAX_MONEY_DIGITS}
+              isDisabled={!draft.amount || draft.amount.length + 3 > MAX_MONEY_DIGITS}
               onClick={() => setDraft({ ...draft, amount: `${draft.amount}000` })}
-              className="num h-12 px-3.5 font-semibold"
-            >
-              000
-            </Button>
+              className="num"
+            />
           </div>
         </div>
 
         <div className="min-w-0">
-          <FieldLabel htmlFor={id('label')}>Nội dung</FieldLabel>
           <TextField
             id={id('label')}
+            label="Nội dung"
             value={draft.label}
             maxLength={200}
             autoComplete="off"
             placeholder="VD: Nhập hàng, lương, tiền sàn…"
-            onChange={(e) => setDraft({ ...draft, label: e.target.value })}
+            onChange={(label) => setDraft({ ...draft, label })}
             error={visible.label}
           />
           {chips.length > 0 && (
             <div role="group" aria-label="Gợi ý nội dung" className="mt-2 flex flex-wrap gap-1.5">
               {chips.map((c) => (
-                <button key={c} type="button" aria-pressed={draft.label === c} className={chip} onClick={() => setDraft({ ...draft, label: c })}>
+                <Chip key={c} pressed={draft.label === c} onClick={() => setDraft({ ...draft, label: c })}>
                   {c}
-                </button>
+                </Chip>
               ))}
             </div>
           )}
         </div>
 
         <div className="min-w-0">
-          <FieldLabel htmlFor={id('date')}>Ngày dự kiến</FieldLabel>
-          <DateInput
-            id={id('date')}
-            value={draft.date}
-            min={minDate}
-            onChange={(e) => setDraft({ ...draft, date: e.target.value })}
-            invalid={Boolean(visible.date)}
-            describedBy={`${id('date')}-error`}
-          />
-          <FieldError id={`${id('date')}-error`} message={visible.date} />
+          <Field id={id('date')} label="Ngày dự kiến" error={visible.date}>
+            <DateInput
+              id={id('date')}
+              value={draft.date}
+              min={minDate}
+              onChange={(e) => setDraft({ ...draft, date: e.target.value })}
+              invalid={Boolean(visible.date)}
+              describedBy={`${id('date')}-error`}
+            />
+          </Field>
           <div role="group" aria-label="Chọn nhanh ngày" className="mt-2 flex flex-wrap gap-1.5">
             {shortcuts.map((s) => (
-              <button key={s.label} type="button" aria-pressed={draft.date === s.date} className={chip} onClick={() => setDraft({ ...draft, date: s.date })}>
-                {s.label} <span className="num font-normal text-muted-foreground">{formatDayMonth(s.date)}</span>
-              </button>
+              <Chip key={s.label} pressed={draft.date === s.date} onClick={() => setDraft({ ...draft, date: s.date })}>
+                {s.label} <span className="num font-normal text-secondary">{formatDayMonth(s.date)}</span>
+              </Chip>
             ))}
           </div>
         </div>
 
         <div className="min-w-0">
-          <FieldLabel htmlFor={id('note')}>
-            Ghi chú <span className="font-normal text-muted-foreground">(không bắt buộc)</span>
-          </FieldLabel>
-          <TextField id={id('note')} value={draft.note} maxLength={500} autoComplete="off" onChange={(e) => setDraft({ ...draft, note: e.target.value })} />
+          <TextField id={id('note')} label="Ghi chú" isOptional value={draft.note} maxLength={500} autoComplete="off" onChange={(note) => setDraft({ ...draft, note })} />
         </div>
 
         {showErrors && Object.keys(errors).length > 0 && (
-          <p role="alert" className="text-sm text-destructive @xl:col-span-2">
+          <p role="alert" className="text-sm font-medium text-shortage @xl:col-span-2">
             Còn {Object.keys(errors).length} ô cần điền đúng trước khi lưu.
           </p>
         )}
 
         <div className="flex gap-2 @xl:col-span-2 @xl:justify-end">
-          {onCancel && (
-            <Button type="button" variant="outline" size="lg" onClick={onCancel}>
-              Hủy
-            </Button>
-          )}
-          <Button type="submit" size="lg" className="flex-1 @xl:flex-none">
-            {submitLabel}
-          </Button>
+          {onCancel && <Button type="button" variant="secondary" size="lg" label="Hủy" onClick={onCancel} />}
+          <Button type="submit" variant="primary" size="lg" label={submitLabel} className="flex-1 @xl:flex-none" />
         </div>
       </div>
     </form>

@@ -1,76 +1,49 @@
-import { ArrowRight, CalendarClock, Info, LineChart, TriangleAlert } from 'lucide-react'
-import { splitScenarioHref } from '@/app/routes'
+import { ArrowRight, LineChart } from 'lucide-react'
+import { Banner } from '@astryxdesign/core/Banner'
+import { Button } from '@astryxdesign/core/Button'
+import { Icon } from '@astryxdesign/core/Icon'
 import { useShop } from '@/app/use-shop'
-import { EmptyState, PageHeader, Skeleton } from '@/components/page'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { buttonVariants } from '@/components/ui/button'
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { BalanceChart } from '@/components/charts/BalanceChart'
+import { EmptyState, PageHeader, Panel, Skeleton } from '@/components/page'
+import { StatGrid, StatTile } from '@/components/readout'
 import { formatDate, formatDayMonth, formatWeekday } from '@/lib/date'
-import { explainShortage, inDays, relativeDay } from '@/lib/explain'
-import { formatMoneyWords, formatVnd, isNegative, subtractMoney, toPlotNumber } from '@/lib/money'
-import { cn } from '@/lib/utils'
-import { BalanceChart } from './BalanceChart'
+import { explainShortage } from '@/lib/explain'
+import { formatVnd, isNegative } from '@/lib/money'
 import { CashTrail } from './CashTrail'
 import { DayTable } from './DayTable'
 import { ErrorAlert } from './ErrorAlert'
 import { EventList } from './EventList'
-import { Led, Readout, ReadoutPanel } from '@/components/readout'
-import { DayStrip, DeltaGauge, DepthTrace, ScaleGauge } from './Instruments'
 import { INTRADAY_RISK_NOTE } from './copy'
-
-const STATS = ['Số dư thấp nhất', 'Ngày đầu thiếu tiền', 'Thiếu lớn nhất', 'Số dư ngày 56']
-
-/** Before there is data: the shape of what will appear, and how to get there. */
-function Empty() {
-  return (
-    <div className="grid gap-4">
-      <ReadoutPanel className="grid-cols-2 lg:grid-cols-4">
-        {STATS.map((label) => (
-          <Readout key={label} label={label} signal="idle" value={<span className="text-muted-foreground">—</span>} />
-        ))}
-      </ReadoutPanel>
-      <EmptyState
-        icon={<LineChart />}
-        title="Chưa có dữ liệu để dự báo"
-        action={
-          <a href="#lich" className={buttonVariants()}>
-            Nhập số dư hôm nay <ArrowRight aria-hidden="true" />
-          </a>
-        }
-      >
-        Nhập số dư và các khoản sắp thu, sắp chi để biết trước ngày nào thiếu tiền.
-      </EmptyState>
-    </div>
-  )
-}
+import { Verdict } from './Verdict'
 
 function LoadingState() {
   return (
     <div role="status" aria-label="Đang tính dự báo…" className="grid gap-4">
-      <Skeleton className="h-24 rounded-lg" />
-      <div className="grid grid-cols-2 gap-px lg:grid-cols-4">
-        {STATS.map((s) => (
-          <Skeleton key={s} className="h-32 rounded-none" />
-        ))}
+      <Skeleton className="h-56" />
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Skeleton className="h-16 sm:h-28" />
+        <Skeleton className="h-16 sm:h-28" />
+        <Skeleton className="h-16 sm:h-28" />
       </div>
-      <Skeleton className="h-96 rounded-lg" />
+      <Skeleton className="h-96" />
     </div>
   )
 }
 
 export function ForecastScreen() {
   const { data, forecast, forecastError, forecastLoading, retryForecast, today } = useShop()
-
-  const heading = (
-    <PageHeader title="Dự báo & cảnh báo" />
-  )
+  const heading = <PageHeader title="Dự báo & cảnh báo" />
 
   if (!data) return heading
   if (!data.balance)
     return (
       <div className="grid gap-6">
         {heading}
-        <Empty />
+        <EmptyState
+          icon={<LineChart />}
+          title="Chưa có dữ liệu để dự báo"
+          action={<Button variant="primary" href="#lich" label="Nhập số dư hôm nay" endContent={<Icon icon={ArrowRight} />} />}
+        />
       </div>
     )
 
@@ -94,15 +67,9 @@ export function ForecastScreen() {
 
   const { result, request } = forecast
   const story = explainShortage(result, request.events, today)
-  const first = result.days[0].date
-  const last = result.days[result.days.length - 1].date
-  const opening = result.days[0].opening
-  const end = result.days[result.days.length - 1].closing
+  const last = result.days[result.days.length - 1]
   const riskDays = result.days.filter((d) => d.hasIntradayTimingRisk)
   const shortDays = result.days.filter((d) => isNegative(d.closing)).length
-  const closings = result.days.map((d) => toPlotNumber(d.closing))
-  const delta = subtractMoney(end, opening)
-  const deltaScale = Math.max(Math.abs(toPlotNumber(opening)), Math.abs(toPlotNumber(end)), 1)
   // Only a real schedule line can be split (not an actual payment already made).
   const candidate = story ? (story.lead ?? story.triggers[0] ?? null) : null
   const splitTarget = candidate && data.obligations.some((o) => o.id === candidate.id) ? candidate : null
@@ -112,185 +79,76 @@ export function ForecastScreen() {
       {heading}
 
       <section aria-labelledby="verdict" aria-busy={forecastLoading} className="grid gap-4">
-        {/* Master warning: the verdict as an annunciator, the lamp on the left, the plain-language story beside it. */}
-        <div
-          className={cn(
-            'grid overflow-hidden rounded-lg border bg-card sm:grid-cols-[12rem_minmax(0,1fr)]',
-            story ? 'border-shortage-line' : 'border-ok-line',
-          )}
-        >
-          <div className="flex items-center gap-3 border-b bg-glass p-4 sm:flex-col sm:items-stretch sm:justify-center sm:border-r sm:border-b-0 sm:p-5">
-            <div
-              className={cn(
-                'grid shrink-0 justify-items-center gap-1 rounded-md border px-3 py-2.5 text-center sm:gap-1.5 sm:py-5',
-                story
-                  ? 'border-shortage bg-shortage-soft text-shortage motion-safe:animate-[lamp_2.4s_ease-in-out_infinite]'
-                  : 'border-ok-line bg-ok-soft text-ok',
-              )}
-            >
-              {story ? <TriangleAlert aria-hidden="true" className="size-4 sm:size-5" /> : <Led signal="ok" className="size-2 sm:size-2.5" />}
-              <span className="placard text-[0.8125rem] font-semibold sm:text-sm">{story ? 'Thiếu tiền' : 'Đủ tiền'}</span>
-              <span className="num text-xs">{result.firstShortageDate ? inDays(result.firstShortageDate, today) : `${result.days.length}/${result.days.length} ngày`}</span>
-            </div>
-            <p className="num placard min-w-0 text-muted-foreground sm:hidden">
-              {formatDate(first)} → {formatDate(last)}
-              <span className="mt-1 block">
-                {result.days.length} ngày{forecastLoading && <span className="text-primary"> · đang cập nhật…</span>}
-              </span>
-            </p>
-          </div>
-
-          <div className="grid content-center gap-3 p-4 sm:p-6">
-            <p className="num placard hidden text-muted-foreground sm:block">
-              {formatDate(first)} → {formatDate(last)} · {result.days.length} ngày
-              {forecastLoading && <span className="text-primary"> · đang cập nhật…</span>}
-            </p>
-            <h2 id="verdict" className="text-[1.0625rem] leading-relaxed font-medium text-foreground sm:text-xl sm:leading-relaxed">
-              {story ? (
-                story.segments.map((seg, i) =>
-                  seg.alarm ? (
-                    <mark key={i} className="bg-transparent font-semibold text-shortage">
-                      {seg.text}
-                    </mark>
-                  ) : (
-                    <span key={i}>{seg.text}</span>
-                  ),
-                )
-              ) : (
-                <>
-                  Đủ tiền trong {result.days.length} ngày tới. Thấp nhất còn{' '}
-                  <span className="font-semibold whitespace-nowrap text-ok">{formatMoneyWords(result.lowestBalance)}</span> {relativeDay(result.lowestBalanceDate, today)}.
-                </>
-              )}
-            </h2>
-            {story && (
-              <div className="flex flex-wrap gap-2">
-                {splitTarget && (
-                  <a href={splitScenarioHref(splitTarget.id)} className={buttonVariants()}>
-                    Thử chia đợt “{splitTarget.label}”
-                    <ArrowRight aria-hidden="true" />
-                  </a>
-                )}
-                <a href="#kich-ban" className={buttonVariants({ variant: 'outline' })}>
-                  Phương án khác
-                </a>
-              </div>
-            )}
-          </div>
-        </div>
+        <Verdict result={result} story={story} today={today} splitTarget={splitTarget} updating={forecastLoading} />
 
         {(result.unresolvedEvents.length > 0 || riskDays.length > 0) && (
-          <div className="grid gap-3 lg:grid-cols-2">
+          <div className="grid gap-3 lg:grid-cols-2 [&>:only-child]:col-span-full">
             {result.unresolvedEvents.length > 0 && (
-              <Alert variant="danger">
-                <TriangleAlert aria-hidden="true" />
-                <AlertTitle>{result.unresolvedEvents.length} khoản quá hạn chưa được tính</AlertTitle>
-                <AlertDescription>
-                  <p>
+              <Banner
+                status="error"
+                collapsible={false}
+                title={`${result.unresolvedEvents.length} khoản quá hạn chưa được tính`}
+                description={
+                  <>
                     Chọn ngày mới, ghi đã xong hoặc hủy ở{' '}
-                    <a href="#lich" className="font-medium text-primary underline underline-offset-4">
+                    <a href="#lich" className="font-semibold underline underline-offset-4">
                       Lịch thu–chi
                     </a>
                     .
-                  </p>
-                  <ul className="mt-2 grid gap-0.5 text-foreground">
-                    {result.unresolvedEvents.map((e) => (
-                      <li key={e.id} className="flex flex-wrap justify-between gap-x-3">
-                        <span className="break-words">{e.label}</span>
-                        <span className="num whitespace-nowrap">
-                          {e.direction === 'In' ? '+' : '−'}
-                          {formatVnd(e.amount)} · {formatDayMonth(e.date)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </AlertDescription>
-              </Alert>
+                  </>
+                }
+              >
+                <ul className="grid gap-1 text-sm">
+                  {result.unresolvedEvents.map((e) => (
+                    <li key={e.id} className="flex flex-wrap justify-between gap-x-3">
+                      <span className="break-words">{e.label}</span>
+                      <span className="num whitespace-nowrap">
+                        {e.direction === 'In' ? '+' : '−'}
+                        {formatVnd(e.amount)} · {formatDayMonth(e.date)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </Banner>
             )}
             {riskDays.length > 0 && (
-              <Alert variant="warning">
-                <CalendarClock aria-hidden="true" />
-                <AlertTitle>{riskDays.length} ngày vừa thu vừa chi</AlertTitle>
-                <AlertDescription>
-                  <p>{INTRADAY_RISK_NOTE}.</p>
-                  <p className="num font-medium text-foreground">{riskDays.map((d) => `${formatWeekday(d.date)} ${formatDayMonth(d.date)}`).join(' · ')}</p>
-                </AlertDescription>
-              </Alert>
+              <Banner status="warning" collapsible={false} title={`${riskDays.length} ngày vừa thu vừa chi`} description={`${INTRADAY_RISK_NOTE}.`}>
+                <p className="num text-sm font-medium">{riskDays.map((d) => `${formatWeekday(d.date)} ${formatDayMonth(d.date)}`).join(' · ')}</p>
+              </Banner>
             )}
           </div>
         )}
 
-        {/* Instrument cluster: four readouts in one panel, hairlines between them. */}
-        <ReadoutPanel className="grid-cols-2 lg:grid-cols-4">
-          <Readout
+        <StatGrid className={story ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}>
+          <StatTile
             label="Số dư thấp nhất"
             value={formatVnd(result.lowestBalance)}
+            negative={isNegative(result.lowestBalance)}
             sub={`${formatWeekday(result.lowestBalanceDate)} ${formatDayMonth(result.lowestBalanceDate)}`}
-            signal={isNegative(result.lowestBalance) ? 'shortage' : 'ok'}
-            gauge={<ScaleGauge min={Math.min(...closings)} max={Math.max(...closings)} value={toPlotNumber(result.lowestBalance)} />}
           />
-          <Readout
-            label="Ngày đầu thiếu tiền"
-            value={result.firstShortageDate ? formatDayMonth(result.firstShortageDate) : 'Không có'}
-            numeric={Boolean(result.firstShortageDate)}
-            sub={result.firstShortageDate && `${formatWeekday(result.firstShortageDate)} · ${inDays(result.firstShortageDate, today)}`}
-            signal={result.firstShortageDate ? 'shortage' : 'ok'}
-            gauge={<DayStrip days={result.days} />}
-          />
-          <Readout
-            label="Thiếu lớn nhất"
-            value={formatVnd(result.maxShortage)}
-            sub={story && `${shortDays} ngày thiếu tiền`}
-            signal={story ? 'shortage' : 'ok'}
-            gauge={<DepthTrace days={result.days} deepest={result.maxShortage} />}
-          />
-          <Readout
-            label="Cuối kỳ"
-            value={formatVnd(end)}
-            sub={`Cuối ngày ${formatDayMonth(last)} · ${isNegative(delta) ? '' : '+'}${formatMoneyWords(delta)} so với đầu kỳ`}
-            signal={isNegative(end) ? 'shortage' : 'ok'}
-            gauge={<DeltaGauge ratio={toPlotNumber(delta) / deltaScale} />}
-          />
-        </ReadoutPanel>
+          {story && <StatTile label="Số ngày thiếu tiền" value={`${shortDays} ngày`} negative />}
+          <StatTile label="Cuối kỳ" value={formatVnd(last.closing)} negative={isNegative(last.closing)} sub={`Cuối ngày ${formatDayMonth(last.date)}`} />
+        </StatGrid>
 
-        <Card className="overflow-hidden">
-          <CardHeader className="pb-0 sm:pb-0">
-            <div>
-              <CardTitle>Số dư cuối ngày</CardTitle>
-              <CardDescription>Di chuột hoặc chạm vào đường để xem từng ngày.</CardDescription>
-            </div>
-          </CardHeader>
-          <div className="px-2 pt-4 pb-3 sm:px-4 sm:pb-4">
-            <BalanceChart result={result} events={request.events} />
-          </div>
-        </Card>
+        <Panel title="Số dư cuối ngày" titleId="chart-title">
+          <BalanceChart result={result} events={request.events} />
+        </Panel>
       </section>
 
       {forecastError && <ErrorAlert error={forecastError} onRetry={retryForecast} />}
 
-      <Card className="overflow-hidden">
-        <section aria-labelledby="trail-title">
-          <CardHeader className="pb-4 sm:pb-4">
-            <div>
-              <CardTitle id="trail-title">{story ? 'Tiền đi đâu trước ngày thiếu' : 'Tiền đi đâu tới ngày thấp nhất'}</CardTitle>
-            </div>
-          </CardHeader>
-          <div className="border-t">
-            <CashTrail result={result} events={request.events} />
-          </div>
-        </section>
-      </Card>
+      <Panel title={story ? 'Tiền đi đâu trước ngày thiếu' : 'Tiền đi đâu tới ngày thấp nhất'} titleId="trail-title" flush>
+        <div className="border-t">
+          <CashTrail result={result} events={request.events} />
+        </div>
+      </Panel>
 
       {result.eventsAfterHorizon.length > 0 && (
-        <Alert>
-          <Info aria-hidden="true" />
-          <AlertTitle>
-            {result.eventsAfterHorizon.length} khoản sau {formatDate(last)} chưa được tính
-          </AlertTitle>
-          <AlertDescription>
+        <Banner status="info" collapsible={false} title={`${result.eventsAfterHorizon.length} khoản sau ${formatDate(last.date)} chưa được tính`}>
+          <div className="text-sm">
             <EventList events={result.eventsAfterHorizon} />
-          </AlertDescription>
-        </Alert>
+          </div>
+        </Banner>
       )}
 
       <DayTable result={result} events={request.events} />

@@ -1,17 +1,19 @@
 import { useState } from 'react'
-import { ArrowRight, CalendarPlus, ChevronDown, TriangleAlert } from 'lucide-react'
+import { ArrowRight, CalendarPlus, Plus, TriangleAlert } from 'lucide-react'
+import { BottomSheet } from '@astryxdesign/core/BottomSheet'
+import { Button } from '@astryxdesign/core/Button'
+import { Collapsible } from '@astryxdesign/core/Collapsible'
+import { useMediaQuery } from '@astryxdesign/core/hooks'
+import { Icon } from '@astryxdesign/core/Icon'
 import { useShop } from '@/app/use-shop'
-import { EmptyState, PageHeader } from '@/components/page'
-import { Badge } from '@/components/ui/badge'
-import { Button, buttonVariants } from '@/components/ui/button'
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { addDays, diffDays, formatDate, formatDayMonth, formatWeekday } from '@/lib/date'
+import { EmptyState, PageHeader, Panel } from '@/components/page'
+import { addDays, diffDays, formatDayMonth } from '@/lib/date'
 import { newId } from '@/lib/id'
-import { addMoney, formatVnd, isZero } from '@/lib/money'
+import { addMoney, isZero } from '@/lib/money'
 import { forecastStart, isOverdue, outstanding } from '@/lib/shop'
 import type { Obligation } from '@/lib/shop'
 import { BalanceTicket } from './BalanceTicket'
-import { ObligationEntry } from './ObligationEntry'
+import { DateMark, ObligationEntry } from './ObligationEntry'
 import { ObligationForm } from './ObligationForm'
 
 /** Monday of the week containing `date` (weeks run Monday to Sunday, as on a Vietnamese wall calendar). */
@@ -40,24 +42,6 @@ function groupByWeek(items: Obligation[]): [string, Obligation[]][] {
 }
 
 /** Date cell: day and weekday, and how soon it is (only while the item is still open; a countdown means nothing once it is done or cancelled). */
-function DateMark({ date, today, countdown }: { date: string; today: string; countdown: boolean }) {
-  const n = diffDays(today, date)
-  const soon = n === 0 ? 'Hôm nay' : n === 1 ? 'Ngày mai' : n > 0 ? `Còn ${n} ngày` : `${-n} ngày trước`
-  return (
-    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:grid sm:justify-items-start sm:gap-0.5">
-      <span className="num text-sm font-semibold text-foreground">{formatDate(date).slice(0, 5)}</span>
-      <span className="text-xs text-muted-foreground">{formatWeekday(date)}</span>
-      {!countdown ? null : n >= 0 && n <= 2 ? (
-        <Badge variant={n === 0 ? 'primary' : 'warning'} className="sm:mt-1">
-          {soon}
-        </Badge>
-      ) : (
-        <span className="text-xs text-muted-foreground sm:mt-0.5">{soon}</span>
-      )}
-    </p>
-  )
-}
-
 /** Rows with the date shown only on the first line of each day. */
 function Rows({ items, today, overdue = false }: { items: Obligation[]; today: string; overdue?: boolean }) {
   return (
@@ -71,9 +55,14 @@ function Rows({ items, today, overdue = false }: { items: Obligation[]; today: s
   )
 }
 
+const COMPOSE_TITLE = 'Thêm khoản sắp thu / sắp chi'
+
 export function ScheduleScreen() {
   const { data, write, today } = useShop()
   const [showDone, setShowDone] = useState(false)
+  const [sheetOpen, setSheetOpen] = useState(false)
+  // Phones add through a bottom sheet; wider screens keep the form beside the list.
+  const wide = useMediaQuery('(min-width: 64rem)')
   if (!data) return null
 
   const { balance } = data
@@ -85,17 +74,41 @@ export function ScheduleScreen() {
   const ins = upcoming.filter((o) => o.direction === 'In')
   const outs = upcoming.filter((o) => o.direction === 'Out')
 
+  const form = balance && (
+    <ObligationForm
+      initial={{ direction: 'Out', label: '', amount: '', date: start ?? today, note: '' }}
+      submitLabel="Thêm vào lịch"
+      minDate={start ?? undefined}
+      onSubmit={async (d) => {
+        const ok = await write((r) =>
+          r.saveObligation({
+            id: newId(),
+            direction: d.direction as Obligation['direction'],
+            label: d.label,
+            amount: d.amount,
+            date: d.date,
+            note: d.note,
+            status: 'open',
+            payments: [],
+          }),
+        )
+        if (ok) setSheetOpen(false)
+        return ok
+      }}
+    />
+  )
+  const phoneAdd = Boolean(balance) && !wide
+
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-5 lg:gap-6">
       <PageHeader
         title="Lịch thu–chi"
-        description="Ghi số dư và các khoản sắp chi, sắp thu kèm ngày."
         actions={
-          upcoming.length > 0 && (
-            <a href="#du-bao" className={buttonVariants({ variant: 'outline' })}>
-              Xem dự báo
-              <ArrowRight aria-hidden="true" />
-            </a>
+          (phoneAdd || upcoming.length > 0) && (
+            <>
+              {upcoming.length > 0 && <Button label="Xem dự báo" href="#du-bao" endContent={<Icon icon={ArrowRight} />} />}
+              {phoneAdd && <Button variant="primary" label="Thêm khoản" icon={<Icon icon={Plus} />} onClick={() => setSheetOpen(true)} />}
+            </>
           )
         }
       />
@@ -108,120 +121,69 @@ export function ScheduleScreen() {
       />
 
       {overdue.length > 0 && (
-        <Card className="overflow-hidden border-shortage-line">
-          <section aria-labelledby="overdue-title">
-            <div className="flex gap-3 border-b border-shortage-line bg-shortage-soft px-4 py-3.5 sm:px-5">
-              <span aria-hidden="true" className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-md border border-shortage bg-shortage-soft text-shortage">
-                <TriangleAlert className="size-4" />
-              </span>
-              <div>
-                <h2 id="overdue-title" className="font-semibold text-shortage">
-                  {overdue.length} khoản quá hạn cần ngày mới
-                </h2>
-                <p className="mt-0.5 max-w-3xl text-sm text-secondary-foreground">Dự báo chưa tính các khoản này. Chọn ngày mới, ghi đã xong hoặc hủy.</p>
-              </div>
-            </div>
+        <Panel
+          flush
+          titleId="overdue-title"
+          title={
+            <span className="flex items-center gap-2 text-shortage">
+              <TriangleAlert aria-hidden="true" className="size-5 shrink-0" />
+              {overdue.length} khoản quá hạn cần ngày mới
+            </span>
+          }
+        >
+          <div className="border-t">
             <Rows items={byDate(overdue)} today={today} overdue />
-          </section>
-        </Card>
+          </div>
+        </Panel>
       )}
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_21rem]">
-        <Card className="lg:sticky lg:top-6 lg:col-start-2 lg:row-start-1">
-          <section aria-labelledby="compose-title" className="p-4 sm:p-5">
-            {balance && open.length === 0 && <p className="placard mb-2 text-primary">Bước 2 / 2</p>}
-            <h2 id="compose-title" className="mb-4 text-lg font-semibold">
-              Thêm khoản sắp thu / sắp chi
-            </h2>
-            {balance ? (
-              <ObligationForm
-                initial={{ direction: 'Out', label: '', amount: '', date: start ?? today, note: '' }}
-                submitLabel="Thêm vào lịch"
-                minDate={start ?? undefined}
-                onSubmit={(d) =>
-                  write((r) =>
-                    r.saveObligation({
-                      id: newId(),
-                      direction: d.direction as Obligation['direction'],
-                      label: d.label,
-                      amount: d.amount,
-                      date: d.date,
-                      note: d.note,
-                      status: 'open',
-                      payments: [],
-                    }),
-                  )
-                }
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground">Lưu số dư ở trên trước.</p>
-            )}
-          </section>
-        </Card>
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        {wide && (
+          <Panel title={COMPOSE_TITLE} titleId="compose-title" className="lg:sticky lg:top-6 lg:col-start-2 lg:row-start-1">
+            {form || <p className="text-sm text-secondary">Lưu số dư ở trên trước.</p>}
+          </Panel>
+        )}
 
-        <Card className="min-w-0 overflow-hidden lg:col-start-1 lg:row-start-1">
-          <section aria-labelledby="ledger-title">
-            <CardHeader className="pb-4 sm:pb-4">
-              <div>
-                <CardTitle id="ledger-title">Sắp tới</CardTitle>
-                {upcoming.length > 0 && (
-                  <CardDescription className="num">
-                    {upcoming.length} khoản · sắp chi {formatVnd(addMoney('0', ...outs.map(outstanding)))} · sắp thu{' '}
-                    {formatVnd(addMoney('0', ...ins.map(outstanding)))}
-                  </CardDescription>
-                )}
-              </div>
-            </CardHeader>
-
-            {upcoming.length === 0 ? (
-              <div className="px-4 pb-4 sm:px-5 sm:pb-5">
-                <EmptyState
-                  icon={<CalendarPlus />}
-                  title="Chưa có khoản nào sắp tới"
-                  action={
-                    <a href="#nhap-file" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
-                      Nhập từ file Excel/CSV
-                    </a>
-                  }
-                >
-                  Thêm tiền nhập hàng, lương, tiền thuê, tiền sàn sắp về… hoặc nhập cả danh sách từ file.
-                </EmptyState>
-              </div>
-            ) : (
-              groupByWeek(upcoming).map(([monday, items]) => (
-                <section key={monday} aria-label={weekTitle(monday, today)} className="border-t">
-                  <h3 className="placard bg-glass px-4 py-2.5 text-muted-foreground sm:px-5">{weekTitle(monday, today)}</h3>
-                  <div className="border-t">
-                    <Rows items={items} today={today} />
-                  </div>
-                </section>
-              ))
-            )}
-
-            {done.length > 0 && (
-              <section aria-labelledby="done-title" className="border-t">
-                <h3 id="done-title">
-                  <Button
-                    variant="ghost"
-                    aria-expanded={showDone}
-                    aria-controls="done-list"
-                    onClick={() => setShowDone((v) => !v)}
-                    className="h-12 w-full justify-start rounded-none px-4 text-secondary-foreground sm:px-5"
-                  >
-                    <ChevronDown aria-hidden="true" className={showDone ? 'rotate-180 transition-transform' : 'transition-transform'} />
-                    Đã xong hoặc đã hủy ({done.length})
-                  </Button>
-                </h3>
-                {showDone && (
-                  <div id="done-list" className="border-t">
-                    <Rows items={byDate(done)} today={today} />
-                  </div>
-                )}
+        <Panel title="Sắp tới" titleId="ledger-title" flush className="lg:col-start-1 lg:row-start-1">
+          {upcoming.length === 0 ? (
+            <div className="border-t px-4 py-8">
+              <EmptyState bare icon={<CalendarPlus />} title="Chưa có khoản nào sắp tới" action={<Button size="sm" label="Nhập từ file Excel/CSV" href="#nhap-file" />} />
+            </div>
+          ) : (
+            groupByWeek(upcoming).map(([monday, items]) => (
+              <section key={monday} aria-label={weekTitle(monday, today)} className="border-t">
+                <h3 className="bg-muted px-4 py-2 text-sm font-bold text-secondary sm:px-5">{weekTitle(monday, today)}</h3>
+                <div className="border-t">
+                  <Rows items={items} today={today} />
+                </div>
               </section>
-            )}
-          </section>
-        </Card>
+            ))
+          )}
+
+          {done.length > 0 && (
+            <div className="day-toggle border-t">
+              <Collapsible
+                isOpen={showDone}
+                onOpenChange={setShowDone}
+                chevronPosition="start"
+                trigger={<span className="block font-semibold text-secondary">Đã xong hoặc đã hủy ({done.length})</span>}
+              >
+                <div className="border-t">
+                  <Rows items={byDate(done)} today={today} />
+                </div>
+              </Collapsible>
+            </div>
+          )}
+        </Panel>
       </div>
+
+      {phoneAdd && (
+        <BottomSheet label={COMPOSE_TITLE} isOpen={sheetOpen} onOpenChange={setSheetOpen} height="tall" purpose="form">
+          <h2 className="section-title mb-4">{COMPOSE_TITLE}</h2>
+          {form}
+        </BottomSheet>
+      )}
     </div>
   )
 }
+

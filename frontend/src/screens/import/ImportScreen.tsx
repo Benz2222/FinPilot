@@ -1,49 +1,25 @@
 import { useRef, useState } from 'react'
 import type { DragEvent } from 'react'
-import { ArrowRight, Check, CircleCheck, Download, FileSpreadsheet, FileUp, LoaderCircle, TriangleAlert } from 'lucide-react'
+import { ArrowRight, Download, FileUp } from 'lucide-react'
+import { Banner } from '@astryxdesign/core/Banner'
+import { Button } from '@astryxdesign/core/Button'
+import { Card } from '@astryxdesign/core/Card'
+import { Icon } from '@astryxdesign/core/Icon'
+import { Spinner } from '@astryxdesign/core/Spinner'
+import { Step, Stepper } from '@astryxdesign/core/Stepper'
+import { Switch } from '@astryxdesign/core/Switch'
+import { Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow } from '@astryxdesign/core/Table'
 import { useShop } from '@/app/use-shop'
-import { PageHeader } from '@/components/page'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
-import { Button, buttonVariants } from '@/components/ui/button'
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { PageHeader, Panel } from '@/components/page'
 import { ApiError, importTemplateUrl, previewImport } from '@/lib/api'
-import { addDays, formatDate } from '@/lib/date'
+import { addDays } from '@/lib/date'
 import { planImport, rowToObligation } from '@/lib/import'
-import type { PlannedRow } from '@/lib/import'
-import { formatVnd } from '@/lib/money'
+import type { ImportPreview } from '@/lib/types'
 import { DuplicateImportError } from '@/lib/store/repository'
-import type { ImportColumn, ImportPreview } from '@/lib/types'
+import { cn } from '@/lib/utils'
+import { ImportPreviewHeader, ImportPreviewRow } from './ImportPreviewRow'
 
 const STEPS = ['Tải mẫu', 'Tải file', 'Kiểm tra', 'Xác nhận'] as const
-
-const COLUMNS: { key: ImportColumn; label: string }[] = [
-  { key: 'loai', label: 'Loại' },
-  { key: 'noiDung', label: 'Nội dung' },
-  { key: 'soTien', label: 'Số tiền' },
-  { key: 'ngay', label: 'Ngày' },
-  { key: 'daThanhToan', label: 'Đã thanh toán' },
-  { key: 'ghiChu', label: 'Ghi chú' },
-]
-
-function cellText(p: PlannedRow, key: ImportColumn): string {
-  const r = p.row
-  switch (key) {
-    case 'loai':
-      return r.direction === 'In' ? 'Thu' : r.direction === 'Out' ? 'Chi' : '—'
-    case 'noiDung':
-      return r.label || '—'
-    case 'soTien':
-      return r.amount ? formatVnd(r.amount) : '—'
-    case 'ngay':
-      return r.date ? formatDate(r.date) : '—'
-    case 'daThanhToan':
-      return r.paid ? formatVnd(r.paid) : '—'
-    case 'ghiChu':
-      return r.note || ''
-  }
-}
 
 function problemMessage(e: unknown): string {
   if (e instanceof ApiError) {
@@ -106,7 +82,8 @@ export function ImportScreen() {
         : 'Không còn dòng nào để thêm.'
       : null
   const shown = errorsOnly ? planned.filter((p) => !p.valid) : planned
-  const step = preview ? 3 : committed ? 4 : 1
+  // Zero-based for the Stepper; past the last step once committed.
+  const step = preview ? 2 : committed ? 4 : 1
 
   async function commit() {
     if (!preview || blockedReason) return
@@ -128,61 +105,24 @@ export function ImportScreen() {
   }
 
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
       <PageHeader title="Nhập từ Excel / CSV" />
 
-      <ol aria-label="Các bước nhập" className="flex flex-wrap items-center gap-2 text-sm">
-        {STEPS.map((label, i) => {
-          const n = i + 1
-          const state = n < step || (n === 4 && committed && !preview) ? 'done' : n === step ? 'current' : 'todo'
-          return (
-            <li key={label} aria-current={state === 'current' ? 'step' : undefined} className="flex items-center gap-2">
-              <span
-                aria-hidden="true"
-                className={`num grid size-7 place-items-center rounded-full text-xs font-semibold ${
-                  state === 'current'
-                    ? 'bg-primary text-primary-foreground shadow-[0_0_14px_-3px_var(--primary)]'
-                    : state === 'done'
-                      ? 'bg-ok-soft text-ok ring-1 ring-ok-line'
-                      : 'bg-glass text-muted-foreground ring-1 ring-input/70'
-                }`}
-              >
-                {state === 'done' ? <Check className="size-3.5" /> : n}
-              </span>
-              <span className={state === 'todo' ? 'text-muted-foreground' : 'font-medium text-foreground'}>
-                {label}
-                {state === 'done' && <span className="sr-only"> (xong)</span>}
-              </span>
-              {n < STEPS.length && <span aria-hidden="true" className="h-px w-4 bg-border sm:w-8" />}
-            </li>
-          )
-        })}
-      </ol>
+      <Stepper activeStep={step} label="Các bước nhập" density="compact" horizontalOptions={{ minimumStepWidth: 112, collapsedVariant: 'withLabel' }}>
+        {STEPS.map((label, i) => (
+          <Step key={label} step={i} label={label} />
+        ))}
+      </Stepper>
 
-      <ol className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-        <li>
-          <Card className="grid h-full content-start gap-3 p-4 sm:p-5">
-            <div aria-hidden="true" className="grid size-11 place-items-center rounded-md border border-primary/30 bg-primary-soft text-primary">
-              <FileSpreadsheet className="size-5" />
-            </div>
-            <div>
-              <p className="placard text-muted-foreground">Bước 1</p>
-              <h2 className="mt-1 text-lg font-semibold">Lấy tệp mẫu</h2>
-            </div>
-            <p className="text-sm leading-relaxed text-secondary-foreground">
-              Mỗi khoản một dòng. Số tiền ghi bằng đồng, ngày ghi dạng 29/10/2026.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <a href={importTemplateUrl('xlsx')} download className={buttonVariants({ variant: 'outline' })}>
-                <Download aria-hidden="true" /> Mẫu Excel (.xlsx)
-              </a>
-              <a href={importTemplateUrl('csv')} download className={buttonVariants({ variant: 'ghost' })}>
-                <Download aria-hidden="true" /> Mẫu CSV
-              </a>
-            </div>
-          </Card>
-        </li>
-        <li>
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        <Panel title="Lấy tệp mẫu" titleId="template-title">
+          <div className="flex flex-wrap gap-2">
+            <Button label="Mẫu Excel (.xlsx)" icon={<Icon icon={Download} />} href={importTemplateUrl('xlsx')} {...({ download: true } as object)} />
+            <Button variant="ghost" label="Mẫu CSV" icon={<Icon icon={Download} />} href={importTemplateUrl('csv')} {...({ download: true } as object)} />
+          </div>
+        </Panel>
+
+        <Card padding={0} className="min-w-0">
           <label
             htmlFor="import-file"
             onDragOver={(e) => {
@@ -191,24 +131,24 @@ export function ImportScreen() {
             }}
             onDragLeave={() => setDragging(false)}
             onDrop={onDrop}
-            className={`grid h-full min-h-52 cursor-pointer content-center justify-items-center gap-2 rounded-lg border-2 border-dashed p-6 text-center transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring ${
-              dragging ? 'border-primary bg-primary-soft' : 'border-input/80 bg-glass hover:border-primary hover:bg-primary-soft/50'
-            }`}
+            className={cn(
+              'm-2 grid h-[calc(100%-1rem)] min-h-48 cursor-pointer content-center justify-items-center gap-2 rounded-[var(--radius-element)] border-2 border-dashed p-6 text-center transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-[var(--color-accent)]',
+              dragging ? 'border-[var(--color-border-emphasized)] bg-accent-muted' : 'border-border hover:border-[var(--color-border-emphasized)] hover:bg-accent-muted',
+            )}
           >
-            <span className="placard text-muted-foreground">Bước 2 · Tải tệp lên</span>
-            <span aria-hidden="true" className="my-1 grid size-12 place-items-center rounded-full border border-primary/40 bg-primary-soft text-primary">
-              {loading ? <LoaderCircle className="size-5 motion-safe:animate-spin" /> : <FileUp className="size-5" />}
+            <span aria-hidden="true" className="mb-1 grid size-12 place-items-center rounded-full border-2 border-[var(--color-border-emphasized)] bg-surface">
+              {loading ? <Spinner size="md" /> : <FileUp className="size-6" />}
             </span>
-            <span className="font-semibold">
+            <span className="font-bold">
               {loading ? (
                 'Đang đọc tệp…'
               ) : (
                 <>
-                  <span className="text-primary">Chọn tệp</span> hoặc kéo thả vào đây
+                  <span className="text-accent underline underline-offset-4">Chọn tệp</span> hoặc kéo thả vào đây
                 </>
               )}
             </span>
-            <span className="text-sm text-muted-foreground">.xlsx hoặc .csv, tối đa 1 MB</span>
+            <span className="text-sm text-secondary">.xlsx hoặc .csv, tối đa 1 MB</span>
             <input
               ref={inputRef}
               id="import-file"
@@ -218,206 +158,115 @@ export function ImportScreen() {
               onChange={(e) => void read(e.target.files?.[0])}
             />
           </label>
-        </li>
-      </ol>
+        </Card>
+      </div>
 
       <div aria-live="polite" className="grid gap-4 empty:hidden">
         {fileError && (
-          <Alert variant="danger" role="alert">
-            <TriangleAlert aria-hidden="true" />
-            <AlertTitle>Không đọc được tệp</AlertTitle>
-            <AlertDescription>{fileError}</AlertDescription>
-          </Alert>
+          <div role="alert">
+            <Banner status="error" title="Không đọc được tệp" description={fileError} />
+          </div>
         )}
         {committed && (
-          <Alert variant="success">
-            <CircleCheck aria-hidden="true" />
-            <AlertTitle>
-              Đã thêm {committed.count} khoản từ {committed.fileName} vào Lịch thu–chi.
-            </AlertTitle>
-            <AlertDescription>
-              {committed.skipped > 0 && <p>Bỏ qua {committed.skipped} dòng lỗi; sửa trong tệp và nhập riêng nếu cần.</p>}
-              <a href="#lich" className={`${buttonVariants({ size: 'sm' })} mt-2`}>
-                Xem lịch <ArrowRight aria-hidden="true" />
-              </a>
-            </AlertDescription>
-          </Alert>
+          <Banner
+            status="success"
+            title={`Đã thêm ${committed.count} khoản từ ${committed.fileName} vào Lịch thu–chi.`}
+            description={committed.skipped > 0 ? `Bỏ qua ${committed.skipped} dòng lỗi` : undefined}
+            endContent={<Button size="sm" label="Xem lịch" href="#lich" endContent={<Icon icon={ArrowRight} />} />}
+          />
         )}
       </div>
 
       {preview && (
-        <Card className="overflow-hidden">
-          <section aria-labelledby="check-title">
-            <CardHeader className="pb-4 sm:pb-4">
-              <div className="min-w-0">
-                <p className="placard text-muted-foreground">Bước 3 · Kiểm tra</p>
-                <CardTitle id="check-title" className="break-all">
-                  {preview.fileName}
-                </CardTitle>
-                <CardDescription className="num">
-                  {preview.rows.length} dòng · {preview.validCount} hợp lệ · {preview.errorCount} lỗi
-                </CardDescription>
-                <p className="mt-1 text-sm text-muted-foreground">Chưa có gì được ghi vào lịch cho đến khi bạn bấm nút ở cuối.</p>
-              </div>
-              {errorRows.length > 0 && (
-                <label className="inline-flex shrink-0 items-center gap-2 text-sm font-medium">
-                  <input type="checkbox" className="size-5 accent-primary" checked={errorsOnly} onChange={(e) => setErrorsOnly(e.target.checked)} />
-                  Chỉ xem dòng lỗi ({errorRows.length})
-                </label>
-              )}
-            </CardHeader>
+        <Panel
+          flush
+          titleId="check-title"
+          title={<span className="break-all">{preview.fileName}</span>}
+          action={
+            errorRows.length > 0 && <Switch label={`Chỉ xem dòng lỗi (${errorRows.length})`} value={errorsOnly} onChange={(checked) => setErrorsOnly(checked)} />
+          }
+        >
+          <p className="num px-4 pb-3 text-sm text-secondary sm:px-5">
+            {preview.rows.length} dòng · {preview.validCount} hợp lệ · {preview.errorCount} lỗi
+          </p>
+          <ImportPreviewHeader />
+          <ol className="divide-y border-t md:border-t-0">
+            {shown.map((p) => (
+              <li key={p.row.rowNumber}>
+                <ImportPreviewRow
+                  planned={p}
+                  cutoff={cutoff}
+                  included={include.has(p.row.rowNumber)}
+                  onIncludeChange={(checked) => {
+                    const next = new Set(include)
+                    if (checked) next.add(p.row.rowNumber)
+                    else next.delete(p.row.rowNumber)
+                    setInclude(next)
+                  }}
+                />
+              </li>
+            ))}
+          </ol>
 
-            <div
-              aria-hidden="true"
-              className="placard hidden grid-cols-[5.5rem_5.5rem_minmax(0,1fr)_8.5rem_6rem_7.5rem] gap-x-4 border-y bg-glass px-5 py-2.5 text-muted-foreground md:grid"
-            >
-              <span>Dòng</span>
-              {COLUMNS.slice(0, 5).map((c) => (
-                <span key={c.key} className={c.key === 'soTien' || c.key === 'daThanhToan' ? 'text-right' : undefined}>
-                  {c.label}
-                </span>
-              ))}
+          <div className="grid gap-3 border-t-2 border-[var(--color-border-emphasized)] px-4 py-4 sm:px-5">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <div className="text-sm">
+                <p className="font-semibold">Sẽ thêm vào lịch</p>
+                {errorRows.length > 0 && <p className="text-shortage">Bỏ qua {errorRows.length} dòng lỗi</p>}
+                {duplicates.length > 0 && (
+                  <p className="text-secondary">Bỏ qua {duplicates.length - duplicates.filter((d) => include.has(d.row.rowNumber)).length} dòng có thể trùng</p>
+                )}
+              </div>
+              <p className="figure num text-3xl">{toAdd.length} dòng</p>
             </div>
-            <ol className="divide-y border-t md:border-t-0">
-              {shown.map((p) => {
-                const errorCols = new Set(p.row.errors.map((e) => e.column))
-                const beforeStart = p.valid && cutoff && p.row.date! <= cutoff && p.row.paid !== p.row.amount
-                return (
-                  <li key={p.row.rowNumber} className={`px-4 py-3.5 sm:px-5 ${!p.valid ? 'bg-shortage-soft' : p.duplicateOf ? 'bg-caution-soft' : ''}`}>
-                    <div className="grid gap-x-4 gap-y-2 md:grid-cols-[5.5rem_minmax(0,1fr)]">
-                      <div className="flex items-center gap-2 md:grid md:content-start md:justify-items-start md:gap-1">
-                        <span className="num text-xs text-muted-foreground">Dòng {p.row.rowNumber}</span>
-                        {!p.valid && <Badge variant="danger">Lỗi</Badge>}
-                        {p.valid && !p.duplicateOf && <Badge variant="success">Hợp lệ</Badge>}
-                        {p.duplicateOf && <Badge variant="warning">Có thể trùng</Badge>}
-                      </div>
-                      <div className="min-w-0">
-                        <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm md:grid-cols-[5.5rem_minmax(0,1fr)_8.5rem_6rem_7.5rem]">
-                          {COLUMNS.filter((c) => c.key !== 'ghiChu' || p.row.note).map((c) => {
-                            const money = c.key === 'soTien' || c.key === 'daThanhToan'
-                            return (
-                              <div key={c.key} className={`min-w-0 ${c.key === 'ghiChu' ? 'col-span-full md:col-span-4 md:col-start-2' : ''}`}>
-                                <dt className="text-xs text-muted-foreground md:sr-only">{c.label}</dt>
-                                <dd
-                                  className={`break-words ${money ? 'num font-medium md:text-right' : ''} ${c.key === 'ghiChu' ? 'text-muted-foreground' : ''} ${
-                                    errorCols.has(c.key) ? 'font-medium text-shortage underline decoration-shortage decoration-wavy underline-offset-4' : ''
-                                  }`}
-                                >
-                                  {errorCols.has(c.key) && cellText(p, c.key) === '—' ? 'chưa hợp lệ' : cellText(p, c.key)}
-                                </dd>
-                              </div>
-                            )
-                          })}
-                        </dl>
-                        {p.row.errors.length > 0 && (
-                          <ul className="mt-2 grid gap-0.5 text-sm text-shortage">
-                            {p.row.errors.map((e, i) => (
-                              <li key={i}>
-                                <strong className="font-semibold">{COLUMNS.find((c) => c.key === e.column)?.label ?? e.column}:</strong> {e.message}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                        {p.duplicateOf && (
-                          <label className="mt-2 flex items-start gap-2 text-sm text-secondary-foreground">
-                            <input
-                              type="checkbox"
-                              className="mt-0.5 size-5 shrink-0 accent-primary"
-                              checked={include.has(p.row.rowNumber)}
-                              onChange={(e) => {
-                                const next = new Set(include)
-                                if (e.target.checked) next.add(p.row.rowNumber)
-                                else next.delete(p.row.rowNumber)
-                                setInclude(next)
-                              }}
-                            />
-                            <span>
-                              Giống {p.duplicateOf.kind === 'existing' ? `khoản “${p.duplicateOf.label}” đã có trong lịch` : `dòng ${p.duplicateOf.rowNumber} của tệp này`}. Sẽ bỏ
-                              qua, trừ khi bạn đánh dấu đây là khoản khác.
-                            </span>
-                          </label>
-                        )}
-                        {beforeStart && (
-                          <p className="mt-1 text-xs text-caution">Ngày này đã tính trong số dư hiện có nên khoản sẽ thành quá hạn, cần đổi ngày sau khi nhập.</p>
-                        )}
-                      </div>
-                    </div>
-                  </li>
-                )
-              })}
-            </ol>
-
-            <div className="grid gap-3 border-t bg-glass px-4 py-4 sm:px-5">
-              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                <div className="text-sm">
-                  <p className="font-medium">Sẽ thêm vào lịch</p>
-                  {errorRows.length > 0 && <p className="text-shortage">Bỏ qua {errorRows.length} dòng lỗi</p>}
-                  {duplicates.length > 0 && (
-                    <p className="text-muted-foreground">Bỏ qua {duplicates.length - duplicates.filter((d) => include.has(d.row.rowNumber)).length} dòng có thể trùng</p>
-                  )}
-                </div>
-                <p className="num text-2xl font-medium tracking-tight text-primary">{toAdd.length} dòng</p>
-              </div>
-              {planned.some((p) => p.valid && p.row.paid && p.row.paid !== '0') && (
-                <p className="text-xs text-muted-foreground">Phần “Đã thanh toán” coi như đã nằm trong số dư hiện có.</p>
-              )}
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-                {blockedReason && (
-                  <p id="commit-blocked" className="text-sm font-medium text-shortage sm:mr-auto">
-                    {blockedReason}
-                  </p>
-                )}
-                {previous && (
-                  <a href="#lich" className={`${buttonVariants({ variant: 'outline', size: 'lg' })} w-full sm:w-auto`}>
-                    Mở Lịch thu–chi <ArrowRight aria-hidden="true" />
-                  </a>
-                )}
-                <Button
-                  size="lg"
-                  onClick={() => void commit()}
-                  disabled={Boolean(blockedReason)}
-                  aria-describedby={blockedReason ? 'commit-blocked' : undefined}
-                  className="h-auto min-h-11 w-full whitespace-normal sm:w-auto"
-                >
-                  {errorRows.length > 0 ? `Nhập ${toAdd.length} dòng hợp lệ, bỏ ${errorRows.length} dòng lỗi` : `Nhập ${toAdd.length} dòng vào Lịch thu–chi`}
-                </Button>
-              </div>
-              {commitError && (
-                <p role="alert" className="text-sm font-medium text-shortage sm:text-right">
-                  {commitError}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+              {blockedReason && (
+                <p id="commit-blocked" className="text-sm font-medium text-shortage sm:mr-auto">
+                  {blockedReason}
                 </p>
               )}
+              {previous && <Button size="lg" label="Mở Lịch thu–chi" href="#lich" endContent={<Icon icon={ArrowRight} />} />}
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={() => void commit()}
+                isDisabled={Boolean(blockedReason)}
+                aria-describedby={blockedReason ? 'commit-blocked' : undefined}
+                label={errorRows.length > 0 ? `Nhập ${toAdd.length} dòng hợp lệ, bỏ ${errorRows.length} dòng lỗi` : `Nhập ${toAdd.length} dòng vào Lịch thu–chi`}
+              />
             </div>
-          </section>
-        </Card>
+            {commitError && (
+              <p role="alert" className="text-sm font-medium text-shortage sm:text-right">
+                {commitError}
+              </p>
+            )}
+          </div>
+        </Panel>
       )}
 
       {data && data.imports.length > 0 && (
-        <Card className="overflow-hidden">
-          <section aria-labelledby="history-title">
-            <CardHeader className="pb-3 sm:pb-3">
-              <CardTitle id="history-title">Đã nhập</CardTitle>
-            </CardHeader>
+        <Panel title="Đã nhập" titleId="history-title" flush>
+          <div className="border-t">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Tệp</TableHead>
-                  <TableHead className="text-right">Số dòng</TableHead>
-                  <TableHead className="text-right">Thời điểm</TableHead>
+                <TableRow isHeaderRow>
+                  <TableHeaderCell>Tệp</TableHeaderCell>
+                  <TableHeaderCell className="text-right">Số dòng</TableHeaderCell>
+                  <TableHeaderCell className="text-right">Thời điểm</TableHeaderCell>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {[...data.imports].reverse().map((r) => (
                   <TableRow key={r.fileSha256}>
-                    <TableCell className="font-medium break-all whitespace-normal">{r.fileName}</TableCell>
+                    <TableCell className="font-medium break-all">{r.fileName}</TableCell>
                     <TableCell className="num text-right">{r.lineCount}</TableCell>
-                    <TableCell className="num text-right text-muted-foreground">{new Date(r.committedAt).toLocaleString('vi-VN')}</TableCell>
+                    <TableCell className="num text-right text-secondary">{new Date(r.committedAt).toLocaleString('vi-VN')}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </section>
-        </Card>
+          </div>
+        </Panel>
       )}
     </div>
   )

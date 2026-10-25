@@ -1,76 +1,56 @@
 import type { ReactNode } from 'react'
+import { Card } from '@astryxdesign/core/Card'
 import { cn } from '@/lib/utils'
 
-export type Signal = 'ok' | 'caution' | 'shortage' | 'info' | 'idle'
-
-const LED: Record<Signal, string> = {
-  ok: 'bg-ok shadow-[0_0_8px_var(--ok)]',
-  caution: 'bg-caution shadow-[0_0_8px_var(--caution)]',
-  shortage: 'bg-shortage shadow-[0_0_8px_var(--shortage)]',
-  info: 'bg-primary shadow-[0_0_8px_var(--primary)]',
-  idle: 'bg-muted-foreground/50',
-}
-
-/** Status light. Decorative: the state is always also said in text. */
-export function Led({ signal, className }: { signal: Signal; className?: string }) {
-  return <span aria-hidden="true" className={cn('inline-block size-1.5 shrink-0 rounded-full', LED[signal], className)} />
-}
-
 /**
- * One readout of an instrument cluster: placard label, a monospaced figure sized to its cell (so long amounts never
- * overflow a phone column), one line of context and an optional gauge underneath. Put several in a `ReadoutPanel`.
+ * One key figure on a white tile: label, the figure in the heading face and at most one short fact under it. On a
+ * phone the tile is a row (label left, figure right); from `sm` up it stacks. `negative` paints the figure red;
+ * nothing else does. Put several in a `StatGrid`.
  */
-export function Readout({
+export function StatTile({
   label,
   value,
   sub,
-  signal,
-  gauge,
-  action,
+  negative = false,
   numeric = true,
-  valueClassName,
+  action,
+  className,
 }: {
   label: string
   value: ReactNode
   sub?: ReactNode
-  signal: Signal
-  gauge?: ReactNode
-  /** A small control beside the label (e.g. "Cập nhật"). */
-  action?: ReactNode
-  /** Figures are monospaced readouts; a word ("Không có") stays in the text face. */
+  negative?: boolean
+  /** Figures use tabular digits; a word ("Không có") does not need them. */
   numeric?: boolean
-  valueClassName?: string
+  /** A small control under the figure. */
+  action?: ReactNode
+  className?: string
 }) {
   return (
-    <div className="@container flex min-w-0 flex-col bg-card p-4 sm:p-5">
-      <div className="flex min-h-5 items-center justify-between gap-2">
-        <dt className="placard flex items-center gap-2 text-muted-foreground">
-          <Led signal={signal} />
-          {label}
-        </dt>
-        {action}
-      </div>
+    <Card
+      padding={0}
+      className={cn(
+        '@container grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 px-4 py-3 sm:grid-cols-1 sm:content-start sm:items-start sm:px-5 sm:py-4',
+        className,
+      )}
+    >
+      <dt className="text-sm font-medium text-secondary">{label}</dt>
       <dd
         className={cn(
+          'figure row-span-2 text-right text-xl whitespace-nowrap sm:row-span-1 sm:mt-1 sm:text-left sm:text-[clamp(1.25rem,10cqi,2rem)]',
           numeric && 'num',
-          'mt-3 text-[clamp(1rem,10cqi,1.875rem)] leading-none font-medium tracking-tight whitespace-nowrap',
-          signal === 'shortage' && 'text-shortage',
-          valueClassName,
+          negative && 'text-shortage',
         )}
       >
         {value}
       </dd>
-      {sub && <dd className="mt-2 text-xs leading-relaxed text-muted-foreground">{sub}</dd>}
-      {gauge && (
-        <dd aria-hidden="true" className="mt-auto pt-4">
-          {gauge}
-        </dd>
-      )}
-    </div>
+      {sub && <dd className="num text-sm text-secondary">{sub}</dd>}
+      {action && <dd className="col-span-full mt-2">{action}</dd>}
+    </Card>
   )
 }
 
-/** Readouts side by side in one panel, hairlines between them. */
-export function ReadoutPanel({ className, children }: { className?: string; children: ReactNode }) {
-  return <dl className={cn('grid gap-px overflow-hidden rounded-lg border bg-border', className)}>{children}</dl>
+/** Key figures: stacked on a phone, side by side from `sm`. */
+export function StatGrid({ className, children }: { className?: string; children: ReactNode }) {
+  return <dl className={cn('grid gap-2 sm:gap-3', className)}>{children}</dl>
 }

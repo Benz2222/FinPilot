@@ -1,12 +1,11 @@
 import { useId, useLayoutEffect, useReducer, useRef, useState } from 'react'
 import type { ClipboardEvent, ComponentProps, SyntheticEvent } from 'react'
-import { CircleAlert } from 'lucide-react'
-import { Input } from '@/components/ui/input'
+import { FieldError } from '@/components/fields'
 import { CURRENCY_SYMBOL, MAX_MONEY_DIGITS, groupDigits } from '@/lib/money'
 import { cn } from '@/lib/utils'
 
 interface MoneyInputProps
-  extends Omit<ComponentProps<typeof Input>, 'value' | 'onChange' | 'type' | 'inputMode'> {
+  extends Omit<ComponentProps<'input'>, 'value' | 'onChange' | 'type' | 'inputMode'> {
   /** Whole VND as a digit string ("" when empty). */
   value: string
   onValueChange: (value: string) => void
@@ -34,7 +33,7 @@ function caretAfterDigits(formatted: string, count: number): number {
 }
 
 /**
- * Whole-VND input. Shows `50.000.000` while the form state keeps the plain digit string `"50000000"`.
+ * Whole-VND input, drawn as an Astryx input (`.fp-input`). Shows `50.000.000` while the form state keeps the plain digit string `"50000000"`.
  * Anything that is not an integer (decimal comma, minus, letters, "1.5"-style paste) is rejected, not coerced.
  */
 export function MoneyInput({ value, onValueChange, error, className, id, onBlur, ...props }: MoneyInputProps) {
@@ -104,7 +103,7 @@ export function MoneyInput({ value, onValueChange, error, className, id, onBlur,
   return (
     <div className="min-w-0">
       <div className="relative">
-        <Input
+        <input
           {...props}
           ref={inputRef}
           id={id}
@@ -120,20 +119,17 @@ export function MoneyInput({ value, onValueChange, error, className, id, onBlur,
           }}
           aria-invalid={invalid || undefined}
           aria-describedby={invalid ? messageId : undefined}
-          className={cn('num pr-8 text-right', className)}
+          className={cn('fp-input num pr-8 text-right', className)}
         />
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground"
+          className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-secondary"
         >
           {CURRENCY_SYMBOL}
         </span>
       </div>
       {invalid && (
-        <p id={messageId} className="mt-1.5 flex items-start gap-1.5 text-[0.8125rem] font-medium text-destructive">
-          <CircleAlert aria-hidden="true" className="mt-px size-3.5 shrink-0" />
-          {message}
-        </p>
+        <FieldError id={messageId} message={message} />
       )}
     </div>
   )
