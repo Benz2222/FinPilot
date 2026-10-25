@@ -35,7 +35,7 @@ Trạng thái đối chiếu với code và bản production ngày 2026-10-23. F
 | F26–F31 | Bảo mật, QA, triển khai, sao lưu | Một phần: test tích hợp cách ly shop và CSRF trên PostgreSQL thật; đã triển khai HTTPS (Vercel + Render + Supabase) và kiểm tra luồng chính trên production; workflow sao lưu mã hóa hằng đêm đã cấu hình, mới thử khôi phục trên máy cục bộ. Chưa có: Playwright trong repo, giới hạn tần suất/khóa tạm đăng nhập, diễn tập khôi phục từ artifact GitHub |
 | F32–F37 | Pilot, sửa lỗi, release, roadmap | Chưa |
 
-Ngoài backlog: trang landing tĩnh `landing/index.html`.
+Ngoài backlog: trang giới thiệu cho khách chưa đăng nhập ở `/` (`frontend/src/screens/landing`).
 
 ## Nguyên tắc quản lý
 

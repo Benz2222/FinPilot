@@ -17,7 +17,7 @@ export function AuthLayout({
   aside?: ReactNode
 }) {
   return (
-    <div className="flex min-h-svh flex-col bg-[radial-gradient(circle_at_1px_1px,var(--color-border)_1px,transparent_0)] bg-[length:22px_22px] px-4 py-5 sm:px-10 sm:py-8">
+    <div className="fp-dots flex min-h-svh flex-col px-4 py-5 sm:px-10 sm:py-8">
       <div className="flex items-center justify-between gap-4">
         <a href="/" className="rounded-md">
           <Brand />

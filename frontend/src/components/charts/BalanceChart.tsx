@@ -23,7 +23,7 @@ interface BalanceChartProps {
   result: ForecastResponse
   /** Events sent with the request, to name what happens on the selected day. */
   events: CashEvent[]
-  /** Picture only: no readout, legend or interaction (auth showcase). */
+  /** Picture only: no readout, legend or interaction (landing page). */
   interactive?: boolean
   className?: string
 }

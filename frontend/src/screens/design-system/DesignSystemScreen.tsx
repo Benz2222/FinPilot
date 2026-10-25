@@ -34,6 +34,8 @@ import type { Direction } from '@/lib/types'
 import { DayTable } from '@/screens/forecast/DayTable'
 import { Verdict } from '@/screens/forecast/Verdict'
 import { ImportPreviewHeader, ImportPreviewRow } from '@/screens/import/ImportPreviewRow'
+import { LandingStep } from '@/screens/landing/LandingScreen'
+import { Showcase } from '@/screens/landing/Showcase'
 import { DateMark, ObligationEntry } from '@/screens/schedule/ObligationEntry'
 import { ObligationForm } from '@/screens/schedule/ObligationForm'
 import { DS_TODAY, dsObligations, dsPlanned, okEvents, outcomeOf, sampleForecast, shortEvents } from './fixtures'
@@ -69,6 +71,8 @@ const COLOURS: [string, string, string][] = [
 ]
 
 const TYPE: [string, string, string][] = [
+  ['.display-title', 'display-title', 'Biết trước ngày nào shop thiếu tiền'],
+  ['.display-heading', 'display-heading', 'Ba bước để thấy ngày thiếu tiền'],
   ['.verdict-text', 'verdict-text', 'Bạn dự kiến thiếu 5 triệu vào ngày 01/11 (sau 7 ngày).'],
   ['.figure', 'figure text-[2rem]', '−12.400.000 ₫'],
   ['.page-title', 'page-title', 'Dự báo dòng tiền'],
@@ -438,6 +442,19 @@ export function DesignSystemScreen() {
               <Specimen title="Trống" source="components/page.tsx · EmptyState" use="một dòng và một nút" className="p-4 sm:p-5">
                 <EmptyState icon={<CalendarRange aria-hidden="true" />} title="Chưa có khoản nào sắp tới" action={<Button variant="primary" label="Nhập từ file Excel/CSV" />} />
               </Specimen>
+              <Specimen title="Trang giới thiệu · hình sản phẩm" source="screens/landing/Showcase.tsx" use="số liệu mẫu; ẩn với trình đọc màn hình" className="fp-dots p-4 sm:p-8">
+                <Showcase className="mx-auto max-w-xl" />
+              </Specimen>
+              <Specimen title="Trang giới thiệu · bước" source="screens/landing/LandingScreen.tsx · LandingStep" use="tiêu đề có số; hình là thành phần thật; từ lg nằm ngang" className="grid gap-4 p-4 sm:p-5">
+                <h3 className="display-heading">
+                  Biết trước ngày nào shop <mark className="display-mark">thiếu tiền</mark>
+                </h3>
+                <LandingStep n={1} title="Nhập số dư hôm nay">
+                  <StatGrid className="max-w-sm">
+                    <StatTile label="Số dư hiện có" value={formatVnd('26000000')} />
+                  </StatGrid>
+                </LandingStep>
+              </Specimen>
               <Specimen title="Đang tải · lỗi" source="components/page.tsx · Loading, Skeleton, ErrorState" className="grid gap-4 p-4 sm:p-5">
                 <Loading className="py-4" />
                 <div className="grid gap-2">
@@ -457,7 +474,7 @@ export function DesignSystemScreen() {
               <Specimen title="Số dư cuối ngày · đủ" source="components/charts/BalanceChart.tsx">
                 <BalanceChart result={ok} events={okEvents} />
               </Specimen>
-              <Specimen title="Tĩnh" source="BalanceChart interactive={false}" use="hình minh họa trang đăng nhập">
+              <Specimen title="Tĩnh" source="BalanceChart interactive={false}" use="hình minh họa trang giới thiệu">
                 <BalanceChart result={short} events={shortEvents} interactive={false} />
               </Specimen>
             </div>

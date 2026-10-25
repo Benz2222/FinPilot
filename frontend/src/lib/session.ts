@@ -10,8 +10,33 @@ export type Session =
 let state: Session = { status: 'checking' }
 const listeners = new Set<() => void>()
 
+/*
+ * "This device was signed in last time." Without it the signed-out pages show while the first session check is
+ * still running (a cold API can take a minute); with it the app waits, so a returning owner never sees them flash.
+ * Blocked storage counts as no hint.
+ */
+const HINT = 'fp.hadSession'
+
+export function hadSession(): boolean {
+  try {
+    return localStorage.getItem(HINT) === '1'
+  } catch {
+    return false
+  }
+}
+
+function setHint(on: boolean) {
+  try {
+    if (on) localStorage.setItem(HINT, '1')
+    else localStorage.removeItem(HINT)
+  } catch {
+    // Storage blocked: behave as a device without the hint.
+  }
+}
+
 function set(next: Session) {
   state = next
+  if (next.status !== 'checking') setHint(next.status === 'signed-in')
   for (const l of listeners) l()
 }
 
@@ -31,12 +56,19 @@ setUnauthorizedHandler(() => {
 
 const isMe = (b: unknown): b is { email: string } => typeof (b as { email?: unknown } | null)?.email === 'string'
 
-/** GET /api/auth/me: who is signed in (401 → anonymous). Other failures are thrown so the caller can offer a retry. */
+let latestCheck = 0
+
+/**
+ * GET /api/auth/me: who is signed in (401 → anonymous). Other failures are thrown so the caller can offer a retry.
+ * Only the latest check counts: a slow first check must not undo a sign-in made while it was running.
+ */
 export async function checkSession(): Promise<void> {
+  const check = ++latestCheck
   try {
     const me = await request('GET', '/api/auth/me', { expect: isMe, authFailureIsExpected: true })
-    set({ status: 'signed-in', email: me.email })
+    if (check === latestCheck) set({ status: 'signed-in', email: me.email })
   } catch (e) {
+    if (check !== latestCheck) return
     if (e instanceof ApiError && e.status === 401) set({ status: 'anonymous' })
     else throw e
   }

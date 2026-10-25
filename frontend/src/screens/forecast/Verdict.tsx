@@ -16,7 +16,7 @@ interface VerdictProps {
   /** The schedule line a split scenario can start from, if there is one. */
   splitTarget: CashEvent | null
   updating?: boolean
-  /** Off for the picture on the sign-in page. */
+  /** Off for the picture on the landing page. */
   hasActions?: boolean
 }
 

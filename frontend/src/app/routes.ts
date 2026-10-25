@@ -12,6 +12,11 @@ export function readRoute(): Route {
   return ROUTES.find((r) => r.id === hash)?.id ?? 'lich'
 }
 
+/** The bare site address, no hash: signed-out visitors see the landing page there. */
+export function isLandingHash(): boolean {
+  return window.location.hash.replace(/^#\/?/, '') === ''
+}
+
 /** Screens shown before sign-in. Any other hash (e.g. `#du-bao`) shows login and is kept for after it. */
 export type AuthView = 'dang-nhap' | 'dang-ky' | 'quen-mat-khau'
 

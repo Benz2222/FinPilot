@@ -1,16 +1,18 @@
 import { Suspense, lazy, useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { ShopProvider } from '@/app/shop-context'
 import { AppShell } from '@/app/AppShell'
-import { readAuthView, readRoute } from '@/app/routes'
+import { isLandingHash, readAuthView, readRoute } from '@/app/routes'
 import type { AuthView, Route } from '@/app/routes'
 import { AuthScreen } from '@/screens/auth/AuthScreen'
 import { Loading } from '@/components/page'
 import { Button } from '@astryxdesign/core/Button'
-import { checkSession, getSession, subscribeSession } from '@/lib/session'
+import { checkSession, getSession, hadSession, subscribeSession } from '@/lib/session'
 
 // The design-system reference loads on its own so customers never download it.
 const ConfirmEmailScreen = lazy(() => import('@/screens/auth/ConfirmEmailScreen').then((m) => ({ default: m.ConfirmEmailScreen })))
 const ResetPasswordScreen = lazy(() => import('@/screens/auth/ResetPasswordScreen').then((m) => ({ default: m.ResetPasswordScreen })))
+// The landing page loads on its own: signed-in visitors never fetch it, and it brings no app screen with it.
+const LandingScreen = lazy(() => import('@/screens/landing/LandingScreen').then((m) => ({ default: m.LandingScreen })))
 const DesignSystemScreen = lazy(() => import('@/screens/design-system/DesignSystemScreen').then((m) => ({ default: m.DesignSystemScreen })))
 
 /** First check of the cookie session; a network failure offers a retry instead of a login form. */
@@ -32,11 +34,15 @@ export default function App() {
   const { failed, retry } = useSessionCheck()
   const [route, setRoute] = useState<Route>(readRoute)
   const [authView, setAuthView] = useState<AuthView>(readAuthView)
+  const [landing, setLanding] = useState(isLandingHash)
+  // A device that was never signed in sees the signed-out pages at once instead of waiting on the first check.
+  const [returning] = useState(hadSession)
 
   useEffect(() => {
     const onHash = () => {
       setRoute(readRoute())
       setAuthView(readAuthView())
+      setLanding(isLandingHash())
       window.scrollTo({ top: 0 })
       // Move focus to the new screen's heading so screen readers announce it.
       requestAnimationFrame(() => document.getElementById('screen-title')?.focus({ preventScroll: true }))
@@ -65,7 +71,7 @@ export default function App() {
       </Suspense>
     )
 
-  if (session.status === 'checking') {
+  if (session.status === 'checking' && returning) {
     return failed ? (
       <div className="grid min-h-svh place-content-center justify-items-center gap-3 p-6 text-center">
         <p className="font-semibold">Không kết nối được máy chủ</p>
@@ -77,7 +83,15 @@ export default function App() {
     )
   }
 
-  if (session.status === 'anonymous') return <AuthScreen view={authView} expired={session.expired === true} />
+  if (session.status !== 'signed-in') {
+    if (landing)
+      return (
+        <Suspense fallback={<Loading className="min-h-svh" />}>
+          <LandingScreen />
+        </Suspense>
+      )
+    return <AuthScreen view={authView} expired={session.status === 'anonymous' && session.expired === true} />
+  }
 
   return (
     <ShopProvider key={session.email}>
