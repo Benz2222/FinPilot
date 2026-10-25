@@ -34,8 +34,16 @@ import type { Direction } from '@/lib/types'
 import { DayTable } from '@/screens/forecast/DayTable'
 import { Verdict } from '@/screens/forecast/Verdict'
 import { ImportPreviewHeader, ImportPreviewRow } from '@/screens/import/ImportPreviewRow'
-import { LandingStep } from '@/screens/landing/LandingScreen'
-import { Showcase } from '@/screens/landing/Showcase'
+import { CheckItem } from '@/screens/landing/Checklist'
+import { CHECKS, FARES, QUESTIONS } from '@/screens/landing/copy'
+import { Flaps } from '@/screens/landing/Departures'
+import { FareCard } from '@/screens/landing/Fares'
+import { FaqItem, RadioWave } from '@/screens/landing/Faq'
+import { FlightPlan, LandingVerdict } from '@/screens/landing/FlightPlan'
+import type { Scenario } from '@/screens/landing/FlightPlan'
+import { SevenSegment } from '@/screens/landing/BlackBox'
+import { RESTOCK_DEFAULT, fly } from '@/screens/landing/model'
+import { Ticker } from '@/screens/landing/Ticker'
 import { DateMark, ObligationEntry } from '@/screens/schedule/ObligationEntry'
 import { ObligationForm } from '@/screens/schedule/ObligationForm'
 import { DS_TODAY, dsObligations, dsPlanned, okEvents, outcomeOf, sampleForecast, shortEvents } from './fixtures'
@@ -51,6 +59,7 @@ const SECTIONS = [
   { id: 'rieng', label: 'Thành phần riêng' },
   { id: 'mau', label: 'Mẫu' },
   { id: 'bieu-do', label: 'Biểu đồ' },
+  { id: 'gioi-thieu', label: 'Trang giới thiệu' },
 ] as const
 
 /** Colour roles: [name, background token, text token drawn on it]. */
@@ -71,8 +80,8 @@ const COLOURS: [string, string, string][] = [
 ]
 
 const TYPE: [string, string, string][] = [
-  ['.display-title', 'display-title', 'Biết trước ngày nào shop thiếu tiền'],
-  ['.display-heading', 'display-heading', 'Ba bước để thấy ngày thiếu tiền'],
+  ['.display-title', 'display-title', 'Check the terrain before you restock.'],
+  ['.display-heading', 'display-heading', 'Pick your cruising altitude.'],
   ['.verdict-text', 'verdict-text', 'Bạn dự kiến thiếu 5 triệu vào ngày 01/11 (sau 7 ngày).'],
   ['.figure', 'figure text-[2rem]', '−12.400.000 ₫'],
   ['.page-title', 'page-title', 'Dự báo dòng tiền'],
@@ -197,6 +206,9 @@ export function DesignSystemScreen() {
   const [dialog, setDialog] = useState(false)
   const [sheet, setSheet] = useState(false)
   const [include, setInclude] = useState(true)
+  const [scenario, setScenario] = useState<Scenario>({ restock: RESTOCK_DEFAULT, split: false })
+  const [checked, setChecked] = useState(true)
+  const [flapText, setFlapText] = useState('PAYROLL')
 
   return (
     <ShopContext value={shopStub}>
@@ -442,19 +454,6 @@ export function DesignSystemScreen() {
               <Specimen title="Trống" source="components/page.tsx · EmptyState" use="một dòng và một nút" className="p-4 sm:p-5">
                 <EmptyState icon={<CalendarRange aria-hidden="true" />} title="Chưa có khoản nào sắp tới" action={<Button variant="primary" label="Nhập từ file Excel/CSV" />} />
               </Specimen>
-              <Specimen title="Trang giới thiệu · hình sản phẩm" source="screens/landing/Showcase.tsx" use="số liệu mẫu; ẩn với trình đọc màn hình" className="fp-dots p-4 sm:p-8">
-                <Showcase className="mx-auto max-w-xl" />
-              </Specimen>
-              <Specimen title="Trang giới thiệu · bước" source="screens/landing/LandingScreen.tsx · LandingStep" use="tiêu đề có số; hình là thành phần thật; từ lg nằm ngang" className="grid gap-4 p-4 sm:p-5">
-                <h3 className="display-heading">
-                  Biết trước ngày nào shop <mark className="display-mark">thiếu tiền</mark>
-                </h3>
-                <LandingStep n={1} title="Nhập số dư hôm nay">
-                  <StatGrid className="max-w-sm">
-                    <StatTile label="Số dư hiện có" value={formatVnd('26000000')} />
-                  </StatGrid>
-                </LandingStep>
-              </Specimen>
               <Specimen title="Đang tải · lỗi" source="components/page.tsx · Loading, Skeleton, ErrorState" className="grid gap-4 p-4 sm:p-5">
                 <Loading className="py-4" />
                 <div className="grid gap-2">
@@ -474,12 +473,81 @@ export function DesignSystemScreen() {
               <Specimen title="Số dư cuối ngày · đủ" source="components/charts/BalanceChart.tsx">
                 <BalanceChart result={ok} events={okEvents} />
               </Specimen>
-              <Specimen title="Tĩnh" source="BalanceChart interactive={false}" use="hình minh họa trang giới thiệu">
+              <Specimen title="Tĩnh" source="BalanceChart interactive={false} height shortLabel" use="hình minh họa; height (mặc định 168) và shortLabel (mặc định THIẾU TỪ dd/mm) chỉ cho trang giới thiệu tiếng Anh">
                 <BalanceChart result={short} events={shortEvents} interactive={false} />
+                <BalanceChart result={short} events={shortEvents} interactive={false} height={120} shortLabel="SHORT FROM 27 OCT" className="mt-4" />
               </Specimen>
             </div>
             <Specimen title="Bảng theo ngày" source="screens/forecast/DayTable.tsx" use="bản bảng của biểu đồ" className="p-0">
               <DayTable result={short} events={shortEvents} />
+            </Specimen>
+          </Block>
+
+          <Block id="gioi-thieu" title="Trang giới thiệu">
+            <p className="max-w-3xl text-secondary">
+              Tiếng Anh, chỉ dùng ở trang giới thiệu (screens/landing). Số liệu là shop mẫu; các hình ẩn với trình đọc màn hình và có cách đọc riêng. Hiệu ứng tắt khi người xem chọn giảm chuyển động.
+            </p>
+            <Specimen title="Hình sản phẩm · thử trực tiếp" source="screens/landing/FlightPlan.tsx" use="thanh trượt và nút chọn vẽ lại biểu đồ, kết luận, điểm thấp nhất" className="fp-dots p-4 sm:p-8">
+              <FlightPlan flight={fly(scenario.restock, scenario.split)} today={DS_TODAY} onChange={setScenario} className="mx-auto max-w-xl" />
+            </Specimen>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Specimen title="Kết luận tiếng Anh" source="FlightPlan.tsx · LandingVerdict" use="cùng lớp .verdict của app" className="grid gap-3 p-4 sm:p-5">
+                <LandingVerdict flight={fly(70_000_000, false)} today={DS_TODAY} />
+                <LandingVerdict flight={fly(70_000_000, true)} today={DS_TODAY} />
+              </Specimen>
+              <Specimen title="Chữ và nhãn" source="index.css · .display-mark .fp-mark-short .fp-tag .fp-ink" className="grid gap-4 p-4 sm:p-5">
+                <p className="display-heading">
+                  Check the terrain <mark className="display-mark">before</mark>. Payroll <mark className="display-mark fp-mark-short">bounced</mark>.
+                </p>
+                <p className="flex flex-wrap gap-2">
+                  <span className="fp-tag">Fictional demo shop</span>
+                  <span className="fp-tag">Indicative launch pricing · not on sale yet</span>
+                </p>
+                <p className="fp-ink rounded-[var(--radius-container)] p-4">
+                  <span className="eyebrow">Dải mực</span> <span className="fp-ink-dim">chữ phụ trên nền mực</span>
+                </p>
+              </Specimen>
+            </div>
+            <Specimen title="Dải chạy" source="screens/landing/Ticker.tsx" use="hai bản nối vòng; đứng yên khi giảm chuyển động" className="overflow-hidden p-0">
+              <Ticker flight={fly(scenario.restock, scenario.split)} today={DS_TODAY} />
+            </Specimen>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Specimen title="Bảng lật chữ" source="Departures.tsx · Flaps" use="mỗi ô một ký tự; lật khi chữ đổi" className="grid gap-3 p-4 sm:p-5">
+                <div className="fp-ink fp-board rounded-[var(--radius-element)] p-4">
+                  <Flaps text={flapText} width={13} animate />
+                </div>
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Chữ trên bảng">
+                  {['PAYROLL', 'WORKSHOP RENT', 'RESTOCK 1/2'].map((t) => (
+                    <Chip key={t} pressed={flapText === t} onClick={() => setFlapText(t)}>
+                      {t}
+                    </Chip>
+                  ))}
+                </div>
+              </Specimen>
+              <Specimen title="Màn số 7 đoạn" source="BlackBox.tsx · SevenSegment" use="triệu đồng, một số lẻ" className="grid gap-3 p-4 sm:p-5">
+                <div className="fp-lcd">
+                  <SevenSegment value={23_200_000} />
+                </div>
+                <div className="fp-lcd fp-lcd-bad">
+                  <SevenSegment value={-12_800_000} />
+                </div>
+              </Specimen>
+              <Specimen title="Dòng kiểm tra" source="Checklist.tsx · CheckItem" use="nút bật/tắt (aria-pressed)" className="p-0">
+                <div className="fp-clip">
+                  <CheckItem {...CHECKS[0]} checked={checked} onToggle={() => setChecked((c) => !c)} />
+                </div>
+              </Specimen>
+              <Specimen title="Câu hỏi" source="Faq.tsx · FaqItem, RadioWave" className="grid justify-items-start gap-4 p-4 sm:p-5">
+                <RadioWave />
+                <div className="fp-faq-list w-full">
+                  <FaqItem n={1} q={QUESTIONS[0].q} a={QUESTIONS[0].a} />
+                </div>
+              </Specimen>
+            </div>
+            <Specimen title="Thẻ gói" source="Fares.tsx · FareCard" use="gói giữa là thẻ mực; mọi nút đi tới đăng ký" className="grid gap-6 p-4 pt-8 sm:p-8 md:grid-cols-3">
+              {FARES.map((f, i) => (
+                <FareCard key={f.name} fare={f} billing="month" active={i === 1} reduce={false} />
+              ))}
             </Specimen>
           </Block>
         </main>

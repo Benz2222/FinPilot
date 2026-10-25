@@ -1,150 +1,405 @@
-import type { ReactNode } from 'react'
-import { ArrowRight, Plus } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { MouseEvent, PointerEvent, ReactNode } from 'react'
+import { flushSync } from 'react-dom'
+import { ArrowRight, Crosshair, Menu, Plus, TrendingUp, Volume2, VolumeX, X } from 'lucide-react'
 import { Button } from '@astryxdesign/core/Button'
-import { Card } from '@astryxdesign/core/Card'
 import { Icon } from '@astryxdesign/core/Icon'
-import { ShopContext } from '@/app/use-shop'
+import { IconButton } from '@astryxdesign/core/IconButton'
+import { LANDING_SECTIONS } from '@/app/routes'
+import type { LandingSection } from '@/app/routes'
 import { Brand } from '@/components/brand'
-import { ScenarioCompare } from '@/components/charts/ScenarioCompare'
-import { StatGrid, StatTile } from '@/components/readout'
-import { formatVnd } from '@/lib/money'
-import { PRESETS } from '@/screens/scenarios/describe'
-import { DateMark, ObligationEntry } from '@/screens/schedule/ObligationEntry'
-import { SAMPLE_BALANCE, SAMPLE_TODAY, compareRows, sampleObligations, sampleShop } from './samples'
-import { Showcase } from './Showcase'
+import { Chip } from '@/components/fields'
+import { todayIso } from '@/lib/date'
+import { cn } from '@/lib/utils'
+import { BlackBox } from './BlackBox'
+import { FINDINGS, QUESTIONS } from './copy'
+import { Checklist } from './Checklist'
+import { DeparturesBoard } from './Departures'
+import { Fares } from './Fares'
+import { FaqItem, RadioWave } from './Faq'
+import { FlightPlan } from './FlightPlan'
+import type { Scenario } from './FlightPlan'
+import { RESTOCK_DEFAULT, fly } from './model'
+import { scrollToSection, useReducedMotion, useReveal } from './motion'
+import { sound, useSoundOn } from './sound'
+import { Ticker } from './Ticker'
 
 const FRAME = 'mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-10'
 
-/**
- * One step of "how it works": a numbered title over (from lg, beside) a picture made of the real component. The picture is an
- * example, hidden from assistive tech and out of the tab order.
- */
-export function LandingStep({ n, title, children }: { n: number; title: string; children: ReactNode }) {
+const NAV: Record<LandingSection, string> = {
+  board: 'Departures',
+  checklist: 'How it works',
+  case: 'Black box',
+  pricing: 'Pricing',
+  faq: 'FAQ',
+}
+
+/** An in-page link: scrolls to its section and leaves the address alone (a hash would leave the landing page). */
+function SectionLink({ id, className, onGo, children }: { id: string; className?: string; onGo?: () => void; children: ReactNode }) {
+  const reduce = useReducedMotion()
   return (
-    <Card padding={0} className="grid min-w-0 overflow-hidden lg:grid-cols-[minmax(0,1fr)_minmax(0,1.8fr)]">
-      <div className="flex items-center gap-3 px-4 py-4 sm:px-5 lg:flex-col lg:items-start lg:justify-center lg:gap-4 lg:p-8">
-        <span aria-hidden="true" className="step-number">
-          {n}
-        </span>
-        <h3 className="section-title">{title}</h3>
-      </div>
-      <div aria-hidden="true" inert className="fp-dots grid content-center border-t-2 border-[var(--color-border-emphasized)] bg-muted p-4 sm:p-6 lg:border-t-0 lg:border-l-2 lg:p-8">
-        {children}
-      </div>
-    </Card>
+    <a
+      href={`#${id}`}
+      className={className}
+      onClick={(e: MouseEvent) => {
+        e.preventDefault()
+        if (onGo) flushSync(onGo) // close the menu first, so the sticky header has its final height when we scroll
+        scrollToSection(id, reduce)
+      }}
+    >
+      {children}
+    </a>
   )
 }
 
-function SignUp({ variant = 'primary' }: { variant?: 'primary' | 'secondary' }) {
-  return <Button href="#dang-ky" variant={variant} size="lg" label="Đăng ký" endContent={<Icon icon={ArrowRight} />} />
+/** Eyebrow, headline and lede that open a section. */
+function SectionHead({ id, eyebrow, title, lede, className }: { id: string; eyebrow: string; title: ReactNode; lede?: ReactNode; className?: string }) {
+  return (
+    <div className={cn('grid max-w-2xl gap-3', className)} data-reveal="">
+      <p className="eyebrow">{eyebrow}</p>
+      <h2 id={`${id}-title`} tabIndex={-1} className="display-heading outline-none">
+        {title}
+      </h2>
+      {lede && <p className="text-lg text-secondary">{lede}</p>}
+    </div>
+  )
 }
 
-/** What signed-out visitors see at the bare address: the question FinPilot answers, shown with the app's own parts. */
-export function LandingScreen() {
+function SoundToggle() {
+  const on = useSoundOn()
   return (
-    <ShopContext value={sampleShop}>
-      <div className="min-h-svh">
-        <header className="phone-header sticky top-0 z-30">
-          <div className={`${FRAME} flex items-center justify-between gap-3 py-2.5`}>
-            <a href="/" className="rounded-md">
-              <Brand />
+    <Chip pressed={on} onClick={sound.toggle} aria-label="Sound effects" className="font-mono tracking-[0.08em] uppercase">
+      {on ? <Volume2 aria-hidden="true" className="size-4" /> : <VolumeX aria-hidden="true" className="size-4" />}
+      <span aria-hidden="true" className="hidden md:inline">
+        {on ? 'Sound on' : 'Sound off'}
+      </span>
+    </Chip>
+  )
+}
+
+function Header() {
+  const [open, setOpen] = useState(false)
+  const menuButton = useRef<HTMLSpanElement>(null)
+  const panel = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setOpen(false)
+      menuButton.current?.querySelector('button')?.focus()
+    }
+    const onPointer = (e: globalThis.PointerEvent) => {
+      const t = e.target as Node
+      if (!panel.current?.contains(t) && !menuButton.current?.contains(t)) setOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('pointerdown', onPointer)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('pointerdown', onPointer)
+    }
+  }, [open])
+
+  return (
+    <header className="phone-header sticky top-0 z-30">
+      <div className={`${FRAME} flex items-center gap-2 py-2.5`}>
+        <a
+          href="/"
+          aria-label="FinPilot home"
+          className="rounded-md"
+          onClick={(e) => {
+            e.preventDefault()
+            window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+          }}
+        >
+          <Brand />
+        </a>
+        <nav aria-label="Primary" className="ml-6 hidden lg:block">
+          <ul className="flex gap-1">
+            {LANDING_SECTIONS.map((id) => (
+              <li key={id}>
+                <SectionLink id={id} className="fp-navlink">
+                  {NAV[id]}
+                </SectionLink>
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+          <SoundToggle />
+          <span className="hidden sm:contents">
+            <Button href="#dang-nhap" variant="ghost" label="Sign in" />
+          </span>
+          <Button href="#dang-ky" variant="primary" label="Start free" />
+          <span ref={menuButton} className="lg:hidden">
+            <IconButton
+              variant="ghost"
+              label={open ? 'Close menu' : 'Open menu'}
+              aria-expanded={open}
+              aria-controls="landing-menu"
+              icon={<Icon icon={open ? X : Menu} />}
+              onClick={() => setOpen((o) => !o)}
+            />
+          </span>
+        </div>
+      </div>
+      <nav ref={panel} id="landing-menu" aria-label="Sections" hidden={!open} className="border-t-2 border-[var(--color-border-emphasized)] lg:hidden">
+        <ul className={`${FRAME} grid gap-1 py-3`}>
+          {LANDING_SECTIONS.map((id) => (
+            <li key={id}>
+              <SectionLink id={id} className="fp-navlink fp-navlink-lg" onGo={() => setOpen(false)}>
+                {NAV[id]}
+              </SectionLink>
+            </li>
+          ))}
+          <li className="sm:hidden">
+            <a href="#dang-nhap" className="fp-navlink fp-navlink-lg">
+              Sign in
             </a>
-            <nav aria-label="Tài khoản" className="flex items-center gap-1.5 sm:gap-2">
-              <Button href="#dang-nhap" variant="ghost" label="Đăng nhập" />
-              <Button href="#dang-ky" variant="primary" label="Đăng ký" />
+          </li>
+        </ul>
+      </nav>
+    </header>
+  )
+}
+
+const FACTS = [
+  { icon: TrendingUp, text: '56-day horizon' },
+  { icon: Crosshair, text: 'Every đồng, no rounding' },
+  { icon: Plus, text: 'Made for VND sellers' },
+]
+
+/** What signed-out visitors see at the bare address: FinPilot explained on an example shop they can play with. */
+export function LandingScreen() {
+  const reduce = useReducedMotion()
+  const root = useRef<HTMLDivElement>(null)
+  const hero = useRef<HTMLElement>(null)
+  const [today] = useState(todayIso)
+  const [scenario, setScenario] = useState<Scenario>({ restock: RESTOCK_DEFAULT, split: false })
+  const flight = useMemo(() => fly(scenario.restock, scenario.split), [scenario])
+  const [checks, setChecks] = useState(0)
+  const onCount = useCallback((n: number) => setChecks(n), [])
+  useReveal(root)
+
+  function change(next: Scenario) {
+    const was = flight.short
+    const now = fly(next.restock, next.split).short
+    if (was !== now) {
+      if (now) sound.alarm()
+      else sound.chime()
+    }
+    setScenario(next)
+  }
+
+  const go = (id: string) => (e: MouseEvent) => {
+    e.preventDefault()
+    scrollToSection(id, reduce)
+  }
+
+  // An address with a section (shared link, back button) opens at that section.
+  useEffect(() => {
+    const jump = () => {
+      const id = window.location.hash.slice(1)
+      if ((LANDING_SECTIONS as readonly string[]).includes(id)) requestAnimationFrame(() => scrollToSection(id, true))
+    }
+    jump()
+    window.addEventListener('hashchange', jump)
+    return () => window.removeEventListener('hashchange', jump)
+  }, [])
+
+  // The dotted paper drifts a little against the pointer (mouse only, and not with reduced motion).
+  function drift(e: PointerEvent<HTMLElement>) {
+    if (reduce || e.pointerType !== 'mouse' || !hero.current) return
+    const r = hero.current.getBoundingClientRect()
+    hero.current.style.setProperty('--fp-drift-x', `${(((e.clientX - r.left) / r.width - 0.5) * -18).toFixed(1)}px`)
+    hero.current.style.setProperty('--fp-drift-y', `${(((e.clientY - r.top) / r.height - 0.5) * -12).toFixed(1)}px`)
+  }
+
+  return (
+    <div ref={root} className="landing min-h-svh">
+      <a href="#main" className="fp-skip" onClick={(e) => (e.preventDefault(), document.getElementById('main')?.focus())}>
+        Skip to content
+      </a>
+      <Header />
+
+      <main id="main" tabIndex={-1} className="outline-none">
+        <section
+          id="hero"
+          ref={hero}
+          aria-labelledby="screen-title"
+          onPointerMove={drift}
+          onPointerLeave={() => {
+            hero.current?.style.removeProperty('--fp-drift-x')
+            hero.current?.style.removeProperty('--fp-drift-y')
+          }}
+          className="fp-dots fp-drift scroll-mt-20"
+        >
+          <div className={`${FRAME} grid gap-10 pt-10 pb-14 sm:pt-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-center lg:gap-12 lg:pt-16 lg:pb-20`}>
+            <div className="grid justify-items-start gap-5 sm:gap-6">
+              <p className="eyebrow fp-eyebrow-rule" data-reveal="">
+                Cash-flow forecasting for online shops
+              </p>
+              <h1 id="screen-title" tabIndex={-1} className="display-title outline-none" data-reveal="" data-d="1">
+                Check the terrain <mark className="display-mark">before</mark> you restock.
+              </h1>
+              <p className="max-w-lg text-lg text-secondary" data-reveal="" data-d="2">
+                FinPilot plots your shop’s cash day by day, 56 days ahead, and tells you before you pay the supplier whether payroll, rent and every invoice still clear.
+              </p>
+              <div className="flex flex-wrap gap-2" data-reveal="" data-d="3">
+                <Button href="#pricing" onClick={go('pricing')} variant="primary" size="lg" label="See the fares" endContent={<Icon icon={ArrowRight} />} />
+                <Button href="#checklist" onClick={go('checklist')} variant="secondary" size="lg" label="Run the pre-flight" />
+              </div>
+              <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold" data-reveal="" data-d="3">
+                {FACTS.map((f) => (
+                  <li key={f.text} className="flex items-center gap-1.5">
+                    <f.icon aria-hidden="true" className="size-4 text-[var(--color-success)]" />
+                    {f.text}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div data-reveal="" data-d="2">
+              <FlightPlan flight={flight} today={today} onChange={change} className="lg:rotate-[0.6deg]" />
+            </div>
+          </div>
+        </section>
+
+        <Ticker flight={flight} today={today} />
+
+        <section id="board" aria-labelledby="board-title" className="scroll-mt-20">
+          <div className={`${FRAME} grid gap-8 py-14 lg:gap-10 lg:py-24`}>
+            <div className="grid gap-4 lg:grid-cols-2 lg:items-end lg:gap-10">
+              <SectionHead id="board" eyebrow="Departures board" title={<>One question, answered <mark className="display-mark">before</mark> you pay.</>} />
+              <p className="text-lg text-secondary" data-reveal="" data-d="1">
+                Every big bill in the next 56 days, with the balance left once it lands. Move the restock slider and the board re-flaps: it’s the same forecast, read row by row.
+              </p>
+            </div>
+            <div data-reveal="">
+              <DeparturesBoard flight={flight} today={today} onAdjust={() => scrollToSection('hero', reduce)} />
+            </div>
+          </div>
+        </section>
+
+        <section id="checklist" aria-labelledby="checklist-title" className="scroll-mt-20 border-y-2 border-[var(--color-border-emphasized)] bg-muted">
+          <div className={`${FRAME} grid gap-8 py-14 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start lg:gap-14 lg:py-24`}>
+            <div className="grid gap-4 lg:sticky lg:top-28">
+              <SectionHead
+                id="checklist"
+                eyebrow="How it works"
+                title={
+                  <>
+                    A pre-flight check that takes <mark className="display-mark">two minutes</mark>.
+                  </>
+                }
+                lede="Pilots don’t trust memory before take-off. Neither should a shop owner about to wire ₫80 million. Tick through it — the same four checks FinPilot runs for you."
+              />
+              <p aria-hidden="true" className="fp-big-count" data-reveal="" data-d="1">
+                {checks}
+                <span>/4</span>
+              </p>
+            </div>
+            <div data-reveal="" data-d="1">
+              <Checklist onCount={onCount} />
+            </div>
+          </div>
+        </section>
+
+        <section id="case" aria-labelledby="case-title" className="fp-ink scroll-mt-20">
+          <span className="fp-hazard block" aria-hidden="true" />
+          <div className={`${FRAME} grid gap-10 py-14 lg:gap-12 lg:py-24`}>
+            <div className="grid gap-4 lg:grid-cols-2 lg:items-end lg:gap-10" data-reveal="">
+              <div className="grid gap-3">
+                <p className="eyebrow fp-ink-dim">Case file FP-26-029</p>
+                <h2 id="case-title" tabIndex={-1} className="display-heading outline-none">
+                  The month payroll <mark className="display-mark fp-mark-short">bounced</mark>.
+                </h2>
+              </div>
+              <p className="fp-ink-dim text-lg">
+                A fictional pottery shop, a very ordinary month. We pulled its cash recorder and played the tape back twice: once as it happened, once with FinPilot in the right-hand seat.
+              </p>
+            </div>
+            <BlackBox />
+            <ol className="grid gap-3 sm:grid-cols-3" data-reveal="">
+              {FINDINGS.map((f) => (
+                <li key={f.k} className="fp-finding">
+                  <span className="eyebrow">{f.k}</span>
+                  <b className="figure text-4xl">{f.v}</b>
+                  <span>{f.text}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+          <span className="fp-hazard block" aria-hidden="true" />
+        </section>
+
+        <section id="pricing" aria-labelledby="pricing-title" className="scroll-mt-20">
+          <div className={`${FRAME} grid gap-8 py-14 lg:py-24`}>
+            <SectionHead
+              id="pricing"
+              eyebrow="Fares"
+              title={
+                <>
+                  Pick your <mark className="display-mark">cruising altitude</mark>.
+                </>
+              }
+              lede="Start on the ground for free. Climb when the forecast starts paying for itself — and come back down any month you like."
+            />
+            <Fares />
+          </div>
+        </section>
+
+        <section id="faq" aria-labelledby="faq-title" className="scroll-mt-20 border-t-2 border-[var(--color-border-emphasized)] bg-muted">
+          <div className={`${FRAME} grid gap-8 py-14 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start lg:gap-14 lg:py-24`}>
+            <div className="grid justify-items-start gap-5">
+              <SectionHead
+                id="faq"
+                eyebrow="Questions"
+                title={
+                  <>
+                    Tower, requesting <mark className="display-mark">clarification</mark>.
+                  </>
+                }
+              />
+              <span data-reveal="" data-d="1">
+                <RadioWave />
+              </span>
+            </div>
+            <div className="fp-faq-list" data-reveal="" data-d="1">
+              {QUESTIONS.map((x, i) => (
+                <FaqItem key={x.q} n={i + 1} q={x.q} a={x.a} />
+              ))}
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="fp-ink">
+        <div className={`${FRAME} grid gap-8 py-10`}>
+          <div className="flex flex-wrap items-start justify-between gap-x-10 gap-y-6">
+            <div className="grid max-w-sm gap-3">
+              <Brand />
+              <p className="fp-ink-dim text-sm">Cash-flow forecasts for online shops in Vietnam. It never moves money and isn’t financial advice.</p>
+            </div>
+            <nav aria-label="Footer">
+              <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold">
+                {LANDING_SECTIONS.map((id) => (
+                  <li key={id}>
+                    <SectionLink id={id} className="underline-offset-4 hover:underline">
+                      {NAV[id]}
+                    </SectionLink>
+                  </li>
+                ))}
+              </ul>
             </nav>
           </div>
-        </header>
-
-        <main>
-          <section aria-labelledby="screen-title" className="fp-dots border-b-2 border-[var(--color-border-emphasized)]">
-            <div className={`${FRAME} grid gap-10 pt-10 pb-14 sm:pt-14 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-center lg:gap-14 lg:pt-20 lg:pb-24`}>
-              <div className="grid justify-items-start gap-5 sm:gap-7">
-                <h1 id="screen-title" tabIndex={-1} className="display-title outline-none">
-                  Biết trước ngày nào shop <mark className="display-mark">thiếu tiền</mark>, thiếu bao nhiêu.
-                </h1>
-                <p className="max-w-md text-lg text-secondary">Xem số dư từng ngày trong 8 tuần tới, trước khi chuyển tiền nhập hàng.</p>
-                <SignUp />
-              </div>
-              <Showcase className="lg:-rotate-1" />
-            </div>
-          </section>
-
-          <section aria-labelledby="steps-title" className={`${FRAME} grid gap-8 py-14 lg:gap-10 lg:py-24`}>
-            <h2 id="steps-title" className="display-heading max-w-2xl">
-              Ba bước để thấy ngày thiếu tiền
-            </h2>
-            <ol className="grid gap-5 lg:gap-6">
-              <li>
-                <LandingStep n={1} title="Nhập số dư hôm nay">
-                  <StatGrid className="max-w-sm">
-                    <StatTile label="Số dư hiện có" value={formatVnd(SAMPLE_BALANCE)} />
-                  </StatGrid>
-                </LandingStep>
-              </li>
-              <li>
-                <LandingStep n={2} title="Ghi các khoản sắp thu, sắp chi">
-                  <Card padding={0} className="overflow-hidden">
-                    <ul className="divide-y">
-                      {sampleObligations.map((o) => (
-                        <li key={o.id}>
-                          <ObligationEntry obligation={o} date={<DateMark date={o.date} today={SAMPLE_TODAY} countdown />} />
-                        </li>
-                      ))}
-                    </ul>
-                  </Card>
-                </LandingStep>
-              </li>
-              <li>
-                <LandingStep n={3} title="Thấy ngày thiếu, thử cách nhập hàng khác">
-                  <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {PRESETS.slice(0, 4).map((p) => (
-                      <li key={p.id}>
-                        <span className="fp-option">
-                          <Icon icon={Plus} />
-                          <span className="font-semibold">{p.title}</span>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </LandingStep>
-              </li>
-            </ol>
-          </section>
-
-          <section aria-labelledby="compare-title" className="border-y-2 border-[var(--color-border-emphasized)] bg-muted">
-            <div className={`${FRAME} grid gap-8 py-14 lg:gap-10 lg:py-24`}>
-              <div className="grid max-w-2xl gap-3">
-                <h2 id="compare-title" className="display-heading">
-                  Chia đợt nhập hàng thì còn thiếu không?
-                </h2>
-                <p className="text-lg text-secondary">So từng cách với hiện tại trước khi chi tiền thật.</p>
-              </div>
-              <div aria-hidden="true" inert>
-                <Card padding={0} elevation="high" className="overflow-hidden md:pt-3">
-                  <ScenarioCompare rows={compareRows} today={SAMPLE_TODAY} />
-                </Card>
-              </div>
-            </div>
-          </section>
-
-          <section aria-labelledby="closing-title" className={`${FRAME} py-14 lg:py-24`}>
-            <Card padding={0} elevation="high" className="grid justify-items-start gap-6 bg-brand p-6 text-brand-ink sm:p-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:p-14">
-              <h2 id="closing-title" className="display-heading">
-                Shop của bạn thiếu tiền ngày nào?
-              </h2>
-              <SignUp variant="secondary" />
-            </Card>
-          </section>
-        </main>
-
-        <footer className="border-t-2 border-[var(--color-border-emphasized)]">
-          <div className={`${FRAME} flex flex-wrap items-center justify-between gap-x-6 gap-y-3 py-6 text-sm text-secondary`}>
-            <Brand />
-            <p>Số liệu trên trang là ví dụ. © 2026 FinPilot</p>
+          <div className="fp-ink-dim flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-[var(--fp-ink-line)] pt-5 font-mono text-xs">
+            <span>© 2026 FinPilot · Shops and figures on this page are fictional · No trackers.</span>
+            <button type="button" className="font-bold underline-offset-4 hover:underline" onClick={() => window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' })}>
+              Back to top ↑
+            </button>
           </div>
-        </footer>
-      </div>
-    </ShopContext>
+        </div>
+      </footer>
+    </div>
   )
 }

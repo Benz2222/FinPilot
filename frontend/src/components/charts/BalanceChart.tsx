@@ -25,10 +25,14 @@ interface BalanceChartProps {
   events: CashEvent[]
   /** Picture only: no readout, legend or interaction (landing page). */
   interactive?: boolean
+  /** Picture only: plot height in px (default 168). */
+  height?: number
+  /** Text over the first short day's rule (default `THIẾU TỪ dd/mm`). */
+  shortLabel?: string
   className?: string
 }
 
-export function BalanceChart({ result, events, interactive = true, className }: BalanceChartProps) {
+export function BalanceChart({ result, events, interactive = true, height: pictureHeight = 168, shortLabel, className }: BalanceChartProps) {
   const [ref, width] = useElementWidth<HTMLDivElement>()
   const { days } = result
   const n = days.length
@@ -45,7 +49,7 @@ export function BalanceChart({ result, events, interactive = true, className }: 
   const selected = hover ?? (pick?.result === result ? pick.index : defaultIndex)
 
   const narrow = width > 0 && width < NARROW
-  const height = interactive ? (narrow ? 232 : 300) : 168
+  const height = interactive ? (narrow ? 232 : 300) : pictureHeight
   const { ticks, lo, hi } = useMemo(() => niceTicks(Math.min(0, ...values), Math.max(0, ...values)), [values])
   const left = interactive ? (narrow ? 42 : 50) : 8
   const plotW = Math.max(0, width - left - MARGIN.right)
@@ -171,7 +175,7 @@ export function BalanceChart({ result, events, interactive = true, className }: 
                   className="chart-label"
                   fill="var(--color-error)"
                 >
-                  THIẾU TỪ {formatDayMonth(result.firstShortageDate!)}
+                  {shortLabel ?? `THIẾU TỪ ${formatDayMonth(result.firstShortageDate!)}`}
                 </text>
               </g>
             )}

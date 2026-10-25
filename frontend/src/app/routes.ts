@@ -12,9 +12,14 @@ export function readRoute(): Route {
   return ROUTES.find((r) => r.id === hash)?.id ?? 'lich'
 }
 
-/** The bare site address, no hash: signed-out visitors see the landing page there. */
+/** Sections of the landing page. Its nav scrolls without touching the hash, but a shared `/#pricing` lands there too. */
+export const LANDING_SECTIONS = ['board', 'checklist', 'case', 'pricing', 'faq'] as const
+export type LandingSection = (typeof LANDING_SECTIONS)[number]
+
+/** The bare site address or one of its sections: signed-out visitors see the landing page there. */
 export function isLandingHash(): boolean {
-  return window.location.hash.replace(/^#\/?/, '') === ''
+  const hash = window.location.hash.replace(/^#\/?/, '')
+  return hash === '' || (LANDING_SECTIONS as readonly string[]).includes(hash)
 }
 
 /** Screens shown before sign-in. Any other hash (e.g. `#du-bao`) shows login and is kept for after it. */
