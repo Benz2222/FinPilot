@@ -1,12 +1,9 @@
 import type { ReactNode } from 'react'
 import { Banner } from '@astryxdesign/core/Banner'
+import { Card } from '@astryxdesign/core/Card'
 import { Brand } from '@/components/brand'
-import { Showcase } from './Showcase'
 
-/**
- * The sign-in frame: brand, title, the form and a footer link, in one column that stays near the top on a phone.
- * From `lg` a product picture sits on the right.
- */
+/** The sign-in frame: brand on top, then the title, form and footer link in one card on the dotted page. */
 export function AuthLayout({
   title,
   children,
@@ -16,29 +13,26 @@ export function AuthLayout({
   title: string
   children: ReactNode
   footer?: ReactNode
-  /** Top-right of the form column (e.g. sign-out on "create shop"). */
+  /** Top-right of the page (e.g. sign-out on "create shop"). */
   aside?: ReactNode
 }) {
   return (
-    <div className="min-h-svh lg:grid lg:grid-cols-[minmax(26rem,34rem)_minmax(0,1fr)]">
-      <div className="flex min-h-svh flex-col bg-surface px-5 py-5 sm:px-10 sm:py-8 lg:border-r-2 lg:border-[var(--color-border-emphasized)]">
-        <div className="flex items-center justify-between gap-4">
-          <a href="/" className="rounded-md">
-            <Brand />
-          </a>
-          {aside}
-        </div>
-        <main className="mx-auto grid w-full max-w-[24rem] flex-1 content-start gap-6 pt-10 pb-8 sm:content-center sm:pt-8 lg:py-12">
+    <div className="flex min-h-svh flex-col bg-[radial-gradient(circle_at_1px_1px,var(--color-border)_1px,transparent_0)] bg-[length:22px_22px] px-4 py-5 sm:px-10 sm:py-8">
+      <div className="flex items-center justify-between gap-4">
+        <a href="/" className="rounded-md">
+          <Brand />
+        </a>
+        {aside}
+      </div>
+      <main className="mx-auto flex w-full max-w-[28rem] flex-1 flex-col pt-8 pb-8 sm:justify-center sm:pt-6">
+        <Card elevation="high" className="grid gap-6">
           <h1 id="screen-title" tabIndex={-1} className="page-title outline-none">
             {title}
           </h1>
           <div className="grid gap-5">{children}</div>
           {footer && <div className="border-t pt-5 text-sm text-secondary">{footer}</div>}
-        </main>
-      </div>
-      <div aria-hidden="true" className="hidden overflow-hidden lg:block">
-        <Showcase />
-      </div>
+        </Card>
+      </main>
     </div>
   )
 }
