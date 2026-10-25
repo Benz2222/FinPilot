@@ -141,7 +141,7 @@ Host=<session-pooler-host>;Port=5432;Database=postgres;Username=postgres.<projec
 
 ### 2. Tạo API Render
 
-Trong Render chọn **New → Blueprint**, kết nối repo và nhánh chứa `render.yaml`, rồi **Apply**. Blueprint chọn Dockerfile ở gốc repo, vùng Singapore, gói Free và health check `/api/health`; container chạy non-root và đọc `$PORT` do Render cấp. Điền các giá trị được hỏi (`sync: false`), hoặc sửa tại **Service → Environment**:
+Trong Render chọn **New → Blueprint**, kết nối repo qua tài khoản GitHub (không dán URL repo công khai: kiểu đó Render không tự triển khai khi có commit mới) và nhánh chứa `render.yaml`, rồi **Apply**. Blueprint chọn Dockerfile ở gốc repo, vùng Singapore, gói Free và health check `/api/health`; container chạy non-root và đọc `$PORT` do Render cấp. Điền các giá trị được hỏi (`sync: false`), hoặc sửa tại **Service → Environment**:
 
 | Biến Render | Giá trị |
 | --- | --- |
@@ -183,7 +183,7 @@ Trong Supabase mở **Project Settings → Data API → Enable Data API**, tắt
 
 Mở `https://<vercel-host>/api/health`, đăng ký tài khoản, bấm link xác nhận email, đăng nhập, tạo shop và thử khôi phục mật khẩu. Cả link xác nhận và link đặt lại mật khẩu đều trỏ frontend theo `App__PublicBaseUrl`. [Vercel external rewrites](https://vercel.com/docs/rewrites) gửi `X-Forwarded-Host` và `X-Forwarded-Proto=https`; API xử lý cả hai trước HTTPS redirection, nên cookie có cờ Secure.
 
-Production hiện tại: frontend `https://finpilot-ruby.vercel.app`, API Render `finpilot-api` (health check `/api/health`), Supabase vùng Singapore. Render Free ngủ sau 15 phút không có request; request đầu tiên sau đó mất khoảng một phút.
+Production hiện tại: frontend `https://finpilot-ruby.vercel.app`, API Render `finpilot-api` (health check `/api/health`), Supabase vùng Singapore. Vercel và Render tự triển khai mỗi commit lên `main`. Render Free ngủ sau 15 phút không có request; request đầu tiên sau đó mất khoảng một phút.
 
 ### 5. Sao lưu và thử khôi phục
 
