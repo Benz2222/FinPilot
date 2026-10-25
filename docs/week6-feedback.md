@@ -104,7 +104,7 @@ Chỉ liệt kê tính năng nào bản demo đã chạy; tính năng chưa có 
 6. Tạo phương án: giảm tiền nhập, dời ngày, chia hai đợt, hoặc giả sử tiền sàn về trễ; so sánh số dư thấp nhất và ngày thiếu giữa các phương án.
 7. Chọn phương án, rồi cập nhật khi tiền thực tế về hoặc khoản được trả.
 
-**Bước 5 — Video.** Video demo 2:47, lời đọc ElevenLabs tiếng Việt, theo đúng nhiệm vụ ở trên; file nằm ngoài repo, nhóm tải lên rồi dán link.
+**Bước 5 — Video.** Video demo 2:55, lời đọc ElevenLabs tiếng Việt (giọng Viên), theo đúng nhiệm vụ ở trên; file nằm ngoài repo, nhóm tải lên rồi dán link.
 
 **Bước 6 — Câu hỏi phản hồi.** Dùng mục [Câu hỏi phản hồi](#câu-hỏi-phản-hồi).
 
