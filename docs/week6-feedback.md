@@ -8,7 +8,7 @@ Nguồn: Google Doc form week 6 (ID trong [README](README.md#nguồn-trên-drive
 - **MKT:** đọc requirement của lớp khác, làm phần business model và các phần còn thiếu cho CP3/CP4.
 - **Họp dự kiến:** Chủ nhật cuối tuần này; tuần 8 (26/9–1/10); tuần 9 (2–8/10).
 
-Bản demo cần ít nhất: nhập số dư và lịch thu–chi, xem ngày/mức thiếu, thử một phương án nhập hàng khác. Bản demo hiện làm được cả ba, dữ liệu lưu trong trình duyệt (xem [roadmap.md](roadmap.md#backlog-và-trạng-thái)).
+Bản demo cần ít nhất: nhập số dư và lịch thu–chi, xem ngày/mức thiếu, thử một phương án nhập hàng khác. Bản production làm được cả ba, dữ liệu lưu ở server (xem [roadmap.md](roadmap.md#backlog-và-trạng-thái)).
 
 ## Câu hỏi phản hồi
 
@@ -47,13 +47,32 @@ Mỗi người một dòng. Không ghi tên thật hay số liệu thật của 
 
 Đợt 2–4 thêm U06–U20 theo cùng mẫu.
 
+## Thử nghiệm mô phỏng 25 persona
+
+Ngày 2026-10-25, 20 persona chủ shop online và 5 persona doanh nghiệp nhỏ do AI điều khiển trình duyệt dùng app thật trên production, mỗi persona một tài khoản `phamdaiduong044+ut01…ut25@gmail.com`. **Không có người thật tham gia**; điểm số, NPS và mức giá là AI chấm theo vai, thời gian là thời gian máy thao tác. Câu trả lời của 5 persona doanh nghiệp gần như cùng một khuôn, nên chỉ dùng làm tín hiệu về phạm vi. Bằng chứng từng phiên (ảnh, log, 12 câu trả lời) nằm ngoài repo, ở `E:\fp-usertest\`.
+
+| | 20 chủ shop | 5 doanh nghiệp |
+|---|---|---|
+| Hoàn thành toàn bộ luồng | 20/20 | 5/5 |
+| Đọc đúng ngày và mức thiếu | 20/20 | 5/5 |
+| Độ dễ nhập liệu (1–5) | 3,75 | 3,80 |
+| NPS | +10 | −40 |
+| Mức giá chấp nhận/tháng | 0–100.000 đ, phần lớn 30.000–80.000 đ | 100.000–150.000 đ |
+
+Persona thích nhất: câu kết luận nêu ngày thiếu, số tiền và khoản gây thiếu; tách tiền đang có khỏi tiền sàn chưa về; so sánh phương án mà không sửa dữ liệu thật. Doanh nghiệp coi FinPilot là công cụ lập kế hoạch đi kèm phần mềm kế toán, không thay thế. Đề xuất tính năng chưa làm nằm ở [roadmap.md](roadmap.md#đề-xuất-sau-thử-nghiệm-tuần-6).
+
 ## Bảng before/after
 
 Mỗi thay đổi một dòng, dẫn tới phản hồi gây ra nó.
 
-| # | Đợt phát hiện | Vấn đề (người thử nào) | Before | After | Commit / PR | Đợt sau còn gặp? |
-|---|---|---|---|---|---|---|
-| 1 | | | | | | |
+| # | Đợt phát hiện | Vấn đề (phiên gặp) | Before | After | Commit |
+|---|---|---|---|---|---|
+| 1 | Mô phỏng | Landing tiếng Anh trước app tiếng Việt (25/25) | Chỉ có tiếng Anh | Nút VI/EN; trình duyệt tiếng Việt mặc định tiếng Việt, nhớ lựa chọn | `d5769d4` |
+| 2 | Mô phỏng | Bảng chi tiết từng ngày bị cắt chữ và số trên điện thoại (16/25) | Bảng 6 cột, ngày và tiền bị cắt | Danh sách theo ngày, mỗi khoản một dòng có số tiền riêng; ngày không có khoản gộp lại | `9172de4` |
+| 3 | Mô phỏng | Bảng so sánh phương án quá dài trên điện thoại (16/25) | Mỗi phương án một thẻ, khoảng 1.100px | Mỗi phương án một dòng hai số (thiếu từ, thấp nhất), khoảng 500px | `9172de4` |
+| 4 | Mô phỏng | Thiếu lần đầu và thiếu nặng nhất khác số tiền (15/25) | Kết luận chỉ nêu lần đầu, có thể dài 9 dòng | Tô nổi cả hai, tối đa 4 dòng trên điện thoại; ô đầu là "Thiếu nhiều nhất" | `9172de4` |
+| 5 | Mô phỏng | Biểu đồ ghi "Ngày 5", kết luận ghi "sau 6 ngày" cho cùng một ngày | Hai cách đếm | Một cách đếm "sau N ngày" ở mọi nơi, có test | `9172de4` |
+| 6 | Mô phỏng | Tên khoản dài làm trang Dự báo rộng hơn màn hình điện thoại | Phần bên phải bị cắt | Nút tự rút gọn nhãn, trang vừa màn hình | `9172de4` |
 
 ## Nháp trả lời form week 6
 
@@ -85,8 +104,8 @@ Chỉ liệt kê tính năng nào bản demo đã chạy; tính năng chưa có 
 6. Tạo phương án: giảm tiền nhập, dời ngày, chia hai đợt, hoặc giả sử tiền sàn về trễ; so sánh số dư thấp nhất và ngày thiếu giữa các phương án.
 7. Chọn phương án, rồi cập nhật khi tiền thực tế về hoặc khoản được trả.
 
-**Bước 5 — Video.** Quay ở đợt 4 theo đúng nhiệm vụ ở trên.
+**Bước 5 — Video.** Video demo 2:47, lời đọc ElevenLabs tiếng Việt, theo đúng nhiệm vụ ở trên; file nằm ngoài repo, nhóm tải lên rồi dán link.
 
 **Bước 6 — Câu hỏi phản hồi.** Dùng mục [Câu hỏi phản hồi](#câu-hỏi-phản-hồi).
 
-**Bước 7–8.** Điền từ bảng ghi nhận và bảng before/after sau 4 đợt.
+**Bước 7–8.** Bước 7 lấy từ [Thử nghiệm mô phỏng 25 persona](#thử-nghiệm-mô-phỏng-25-persona) và phải ghi rõ là mô phỏng; bước 8 lấy từ [bảng before/after](#bảng-beforeafter).

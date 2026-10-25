@@ -35,7 +35,19 @@ Trạng thái đối chiếu với code và bản production ngày 2026-10-23. F
 | F26–F31 | Bảo mật, QA, triển khai, sao lưu | Một phần: test tích hợp cách ly shop và CSRF trên PostgreSQL thật; đã triển khai HTTPS (Vercel + Render + Supabase) và kiểm tra luồng chính trên production; workflow sao lưu mã hóa hằng đêm đã cấu hình, mới thử khôi phục trên máy cục bộ. Chưa có: Playwright trong repo, giới hạn tần suất/khóa tạm đăng nhập, diễn tập khôi phục từ artifact GitHub |
 | F32–F37 | Pilot, sửa lỗi, release, roadmap | Chưa |
 
-Ngoài backlog: trang giới thiệu cho khách chưa đăng nhập ở `/` (`frontend/src/screens/landing`).
+Ngoài backlog: trang giới thiệu cho khách chưa đăng nhập ở `/` (`frontend/src/screens/landing`), có nút chuyển Việt/Anh.
+
+## Đề xuất sau thử nghiệm tuần 6
+
+Từ thử nghiệm mô phỏng 25 persona ngày 2026-10-25 (xem [week6-feedback.md](week6-feedback.md#thử-nghiệm-mô-phỏng-25-persona)). Số đếm là số phiên gặp vấn đề, không phải số người thật yêu cầu; cần kiểm chứng với shop thật trước khi làm. Chưa làm mục nào.
+
+| Đề xuất | Lý do | Phiên gặp | Ghi chú phạm vi |
+|---|---|---|---|
+| Sửa dòng lỗi ngay trong bước xem trước khi nhập file | Hiện phải sửa file Excel rồi tải lên lại | 11/25 (7 shop, 4 doanh nghiệp) | Trong phạm vi MVP |
+| Nhập nhanh nhiều khoản liên tiếp | Mỗi khoản phải điền lại cả form | 14/25 | Trong phạm vi MVP |
+| Lấy khoản thu–chi từ phần mềm đang dùng (MISA, Sapo, KiotViet) | Phải chuẩn bị lại lịch thu–chi, đối chiếu tay | 10/25 (5 shop, 5/5 doanh nghiệp) | Tích hợp: ngoài MVP; trước mắt có thể là mẫu import khớp file xuất của các phần mềm này |
+| Phân quyền cho kế toán, nhiều người dùng một shop | Chủ và kế toán không chia việc được | 5/5 doanh nghiệp | Ngoài MVP (mỗi tài khoản một shop) |
+| Tách theo cơ sở/chi nhánh | Doanh nghiệp nhiều cửa hàng không xem riêng được | 5/5 doanh nghiệp | Ngoài MVP |
 
 ## Nguyên tắc quản lý
 
