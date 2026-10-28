@@ -1,5 +1,5 @@
 import { Suspense, lazy, useState } from 'react'
-import { CalendarRange, CircleAlert, Database, FileSpreadsheet, LineChart, LogOut, Split, Trash2 } from 'lucide-react'
+import { CalendarRange, CircleAlert, Database, FileSpreadsheet, History, LineChart, LogOut, Split, Trash2 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { AppShell as AstryxAppShell } from '@astryxdesign/core/AppShell'
 import { Avatar } from '@astryxdesign/core/Avatar'
@@ -26,12 +26,14 @@ import { useShop } from './use-shop'
 const ForecastScreen = lazy(() => import('@/screens/forecast/ForecastScreen').then((m) => ({ default: m.ForecastScreen })))
 const ScenariosScreen = lazy(() => import('@/screens/scenarios/ScenariosScreen').then((m) => ({ default: m.ScenariosScreen })))
 const ImportScreen = lazy(() => import('@/screens/import/ImportScreen').then((m) => ({ default: m.ImportScreen })))
+const AuditHistoryScreen = lazy(() => import('@/screens/audit/AuditHistoryScreen').then((m) => ({ default: m.AuditHistoryScreen })))
 
 const ICONS: Record<Route, LucideIcon> = {
   lich: CalendarRange,
   'du-bao': LineChart,
   'kich-ban': Split,
   'nhap-file': FileSpreadsheet,
+  'lich-su': History,
 }
 
 /** Account menu: who is signed in, the two whole-shop data actions (sample data, wipe), and sign-out. */
@@ -199,6 +201,7 @@ export function AppShell({ route, email }: { route: Route; email: string }) {
               {route === 'du-bao' && <ForecastScreen />}
               {route === 'kich-ban' && <ScenariosScreen />}
               {route === 'nhap-file' && <ImportScreen />}
+              {route === 'lich-su' && <AuditHistoryScreen />}
             </Suspense>
           </>
         )}

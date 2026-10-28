@@ -55,7 +55,7 @@ public sealed class ShopFixture : WebApplicationFactory<Program>, IAsyncLifetime
         var supplied = Environment.GetEnvironmentVariable("FINPILOT_TEST_POSTGRES");
         if (string.IsNullOrWhiteSpace(supplied))
         {
-            postgres = new PostgreSqlBuilder("postgres:17-alpine").Build();
+            postgres = new PostgreSqlBuilder().WithImage("postgres:17-alpine").Build();
             await postgres.StartAsync();
             supplied = postgres.GetConnectionString();
         }

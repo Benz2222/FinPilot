@@ -33,6 +33,67 @@ public sealed class ShopService(AppDbContext db, IOptions<MvcJsonOptions> jsonOp
         return response;
     }
 
+    public async Task<AuditHistoryResponse> ReadAudit(string owner, int page, int pageSize, string? entityType, string? action, CancellationToken ct)
+    {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var shop = await db.Shops.AsNoTracking().SingleOrDefaultAsync(x => x.OwnerUserId == owner, ct) ?? throw NoShop();
+
+        var query = db.AuditLogs.AsNoTracking().Where(x => x.ShopId == shop.Id);
+
+        if (!string.IsNullOrWhiteSpace(entityType))
+        {
+            var cleanType = entityType.Trim().ToLowerInvariant();
+            query = query.Where(x => x.EntityType.ToLower() == cleanType);
+        }
+
+        if (!string.IsNullOrWhiteSpace(action))
+        {
+            var cleanAction = action.Trim().ToLowerInvariant();
+            query = query.Where(x => x.Action.ToLower() == cleanAction);
+        }
+
+        var total = await query.CountAsync(ct);
+        var rows = await query.OrderByDescending(x => x.OccurredAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        var items = rows.Select(x => new AuditItemResponse
+        {
+            Id = x.Id,
+            OccurredAt = x.OccurredAt,
+            Action = x.Action,
+            EntityType = x.EntityType,
+            EntityId = x.EntityId,
+            Summary = FormatSummary(x.Action, x.EntityType),
+            BeforeJson = x.BeforeJson,
+            AfterJson = x.AfterJson
+        }).ToArray();
+
+        return new AuditHistoryResponse
+        {
+            Items = items,
+            Total = total,
+            Page = page,
+            PageSize = pageSize
+        };
+    }
+
+    private static string FormatSummary(string action, string entityType) => (action.ToLowerInvariant(), entityType.ToLowerInvariant()) switch
+    {
+        ("create", "shop") => "Tạo cửa hàng mới",
+        ("balance", "snapshot") => "Cập nhật số dư và ngày chốt",
+        ("upsert", "obligation") => "Thêm hoặc cập nhật khoản thu–chi",
+        ("remove", "obligation") => "Xóa khoản thu–chi",
+        ("import", "import") => "Nhập theo đợt từ tệp Excel/CSV",
+        ("upsert", "scenario") => "Lưu kịch bản mô phỏng",
+        ("remove", "scenario") => "Xóa kịch bản mô phỏng",
+        ("replace", "shop") => "Thay thế dữ liệu cửa hàng",
+        _ => $"{action} {entityType}"
+    };
+
     public async Task<ShopResponse> Create(string owner, CreateShop input, CancellationToken ct)
     {
         Validate(input);

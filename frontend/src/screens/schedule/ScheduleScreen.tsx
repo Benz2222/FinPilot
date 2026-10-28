@@ -78,8 +78,9 @@ export function ScheduleScreen() {
     <ObligationForm
       initial={{ direction: 'Out', label: '', amount: '', date: start ?? today, note: '' }}
       submitLabel="Thêm vào lịch"
+      allowContinue={true}
       minDate={start ?? undefined}
-      onSubmit={async (d) => {
+      onSubmit={async (d, keepOpen) => {
         const ok = await write((r) =>
           r.saveObligation({
             id: newId(),
@@ -92,7 +93,7 @@ export function ScheduleScreen() {
             payments: [],
           }),
         )
-        if (ok) setSheetOpen(false)
+        if (ok && !keepOpen) setSheetOpen(false)
         return ok
       }}
     />

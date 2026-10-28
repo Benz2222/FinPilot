@@ -8,6 +8,8 @@ Thư mục này là bản trong repo của tài liệu nhóm trên Google Drive.
 | [conflicts.md](conflicts.md) | Mâu thuẫn giữa spec và các checkpoint, chờ team chốt; các quyết định đã chốt |
 | [research.md](research.md) | Thị trường, đối thủ, phỏng vấn, khảo sát, persona, nguồn tham khảo |
 | [roadmap.md](roadmap.md) | Kế hoạch 6 tuần, backlog F01–F37 và trạng thái so với code, đề xuất tính năng sau thử nghiệm |
+| [features-implemented.md](features-implemented.md) | Tổng hợp chức năng sản phẩm và API đã triển khai |
+| [implementation-plan-remaining.md](implementation-plan-remaining.md) | Kế hoạch triển khai các khoảng trống MVP, bảo mật, kiểm thử và pilot |
 | [week6-feedback.md](week6-feedback.md) | Nhiệm vụ tuần 6: thu phản hồi 20 người dùng, bảng before/after, bản nháp form week 6 |
 
 Cách chạy, API và cấu trúc repo: [README gốc](../README.md). Thiết kế database: [database/README.md](../database/README.md).

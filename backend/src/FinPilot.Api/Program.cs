@@ -9,7 +9,9 @@ using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("Default")
@@ -56,7 +58,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
     // Render/Vercel do not have fixed proxy IPs. Trust the nearest proxy's sanitized headers.
-    options.KnownIPNetworks.Clear();
+    options.KnownNetworks.Clear();
     options.KnownProxies.Clear();
     options.AllowedHosts = [publicUri.Host];
 });
@@ -87,6 +89,38 @@ builder.Services.ConfigureApplicationCookie(options =>
         context.Response.StatusCode = StatusCodes.Status403Forbidden;
         return Task.CompletedTask;
     };
+});
+
+builder.Services.Configure<IdentityOptions>(options =>
+{
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.AllowedForNewUsers = true;
+});
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        await Results.Problem(
+            statusCode: StatusCodes.Status429TooManyRequests,
+            title: "Quá nhiều yêu cầu đăng nhập hoặc xác thực. Vui lòng thử lại sau.",
+            type: "https://finpilot.app/problems/rate-limited"
+        ).ExecuteAsync(context.HttpContext);
+    };
+
+    options.AddPolicy("auth-rate-limit", httpContext =>
+    {
+        var clientIp = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(clientIp, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        });
+    });
 });
 
 var app = builder.Build();
@@ -127,8 +161,9 @@ app.Use(async (context, next) =>
     await next(context);
 });
 app.UseAuthorization();
+app.UseRateLimiter();
 
-app.MapGroup("/api/auth").AddEndpointFilterFactory((context, next) =>
+app.MapGroup("/api/auth").RequireRateLimiting("auth-rate-limit").AddEndpointFilterFactory((context, next) =>
 {
     var useCookiesIndex = Array.FindIndex(context.MethodInfo.GetParameters(), parameter => parameter.Name == "useCookies");
     return async invocation =>
@@ -160,6 +195,13 @@ app.MapGet("/api/auth/me", async (HttpContext context, UserManager<IdentityUser>
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 app.MapControllers();
 app.MapFallbackToFile("index.html");
+
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync();
+}
 
 app.Run();
 

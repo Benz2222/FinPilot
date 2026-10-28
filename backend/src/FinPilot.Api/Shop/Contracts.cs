@@ -117,3 +117,23 @@ public sealed record ShopResponse : ShopInput
     public required string Name { get; init; }
     public required long DataVersion { get; init; }
 }
+
+public sealed record AuditItemResponse
+{
+    public required Guid Id { get; init; }
+    public required DateTimeOffset OccurredAt { get; init; }
+    public required string Action { get; init; }
+    public required string EntityType { get; init; }
+    public required Guid EntityId { get; init; }
+    public required string Summary { get; init; }
+    public string? BeforeJson { get; init; }
+    public required string AfterJson { get; init; }
+}
+
+public sealed record AuditHistoryResponse
+{
+    public required AuditItemResponse[] Items { get; init; }
+    public required int Total { get; init; }
+    public required int Page { get; init; }
+    public required int PageSize { get; init; }
+}

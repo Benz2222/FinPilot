@@ -71,3 +71,21 @@ export interface ImportPreview {
   validCount: number
   errorCount: number
 }
+
+export interface AuditItem {
+  id: string
+  occurredAt: string
+  action: string
+  entityType: string
+  entityId: string
+  summary: string
+  beforeJson: string | null
+  afterJson: string
+}
+
+export interface AuditHistoryResponse {
+  items: AuditItem[]
+  total: number
+  page: number
+  pageSize: number
+}

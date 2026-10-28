@@ -14,7 +14,7 @@ import { PageHeader, Panel } from '@/components/page'
 import { ApiError, importTemplateUrl, previewImport } from '@/lib/api'
 import { addDays } from '@/lib/date'
 import { planImport, rowToObligation } from '@/lib/import'
-import type { ImportPreview } from '@/lib/types'
+import type { ImportPreview, ImportRow } from '@/lib/types'
 import { DuplicateImportError } from '@/lib/store/repository'
 import { cn } from '@/lib/utils'
 import { ImportPreviewHeader, ImportPreviewRow } from './ImportPreviewRow'
@@ -38,6 +38,7 @@ export function ImportScreen() {
   const [loading, setLoading] = useState(false)
   const [fileError, setFileError] = useState<string | null>(null)
   const [include, setInclude] = useState<Set<number>>(new Set())
+  const [excludedRows, setExcludedRows] = useState<Set<number>>(new Set())
   const [committed, setCommitted] = useState<{ count: number; fileName: string; skipped: number } | null>(null)
   const [commitError, setCommitError] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
@@ -51,6 +52,7 @@ export function ImportScreen() {
     setCommitError(null)
     setPreview(null)
     setInclude(new Set())
+    setExcludedRows(new Set())
     setErrorsOnly(false)
     try {
       setPreview(await previewImport(file))
@@ -68,20 +70,40 @@ export function ImportScreen() {
     void read(e.dataTransfer.files[0])
   }
 
+  function handleUpdateRow(updated: ImportRow) {
+    if (!preview) return
+    const nextRows = preview.rows.map((r) => (r.rowNumber === updated.rowNumber ? updated : r))
+    const valid = nextRows.filter((r) => r.errors.length === 0).length
+    setPreview({
+      ...preview,
+      rows: nextRows,
+      validCount: valid,
+      errorCount: nextRows.length - valid,
+    })
+  }
+
+  function handleToggleExclude(rowNumber: number) {
+    const next = new Set(excludedRows)
+    if (next.has(rowNumber)) next.delete(rowNumber)
+    else next.add(rowNumber)
+    setExcludedRows(next)
+  }
+
   const planned = preview && data ? planImport(preview, data.obligations) : []
   const previous = preview ? data?.imports.find((r) => r.fileSha256 === preview.fileSha256) : undefined
-  const errorRows = planned.filter((p) => !p.valid)
-  const toAdd = planned.filter((p) => p.valid && (!p.duplicateOf || include.has(p.row.rowNumber)))
-  const duplicates = planned.filter((p) => p.valid && p.duplicateOf)
+  const activePlanned = planned.filter((p) => !excludedRows.has(p.row.rowNumber))
+  const unhandledErrors = activePlanned.filter((p) => !p.valid)
+  const toAdd = activePlanned.filter((p) => p.valid && (!p.duplicateOf || include.has(p.row.rowNumber)))
+  const duplicates = activePlanned.filter((p) => p.valid && p.duplicateOf)
   const cutoff = data?.balance?.cutoff ?? null
   const blockedReason = previous
     ? `Tệp này đã được nhập lúc ${new Date(previous.committedAt).toLocaleString('vi-VN')}. Muốn đổi gì, hãy sửa trong Lịch thu–chi hoặc dùng tệp mới.`
-    : toAdd.length === 0
-      ? errorRows.length > 0
-        ? 'Không có dòng hợp lệ nào để thêm. Sửa tệp rồi tải lên lại.'
-        : 'Không còn dòng nào để thêm.'
-      : null
-  const shown = errorsOnly ? planned.filter((p) => !p.valid) : planned
+    : unhandledErrors.length > 0
+      ? `Còn ${unhandledErrors.length} dòng lỗi cần sửa hợp lệ hoặc bấm 'Loại bỏ' trước khi nhập.`
+      : toAdd.length === 0
+        ? 'Không còn dòng nào để thêm.'
+        : null
+  const shown = errorsOnly ? planned.filter((p) => !p.valid && !excludedRows.has(p.row.rowNumber)) : planned
   // Zero-based for the Stepper; past the last step once committed.
   const step = preview ? 2 : committed ? 4 : 1
 
@@ -92,7 +114,7 @@ export function ImportScreen() {
     try {
       const ok = await write((r) => r.commitImport({ fileSha256: preview.fileSha256, fileName: preview.fileName, obligations }))
       if (ok) {
-        setCommitted({ count: obligations.length, fileName: preview.fileName, skipped: errorRows.length })
+        setCommitted({ count: obligations.length, fileName: preview.fileName, skipped: excludedRows.size })
         setPreview(null)
       }
     } catch (e) {
@@ -183,11 +205,11 @@ export function ImportScreen() {
           titleId="check-title"
           title={<span className="break-all">{preview.fileName}</span>}
           action={
-            errorRows.length > 0 && <Switch label={`Chỉ xem dòng lỗi (${errorRows.length})`} value={errorsOnly} onChange={(checked) => setErrorsOnly(checked)} />
+            unhandledErrors.length > 0 && <Switch label={`Chỉ xem dòng lỗi (${unhandledErrors.length})`} value={errorsOnly} onChange={(checked) => setErrorsOnly(checked)} />
           }
         >
           <p className="num px-4 pb-3 text-sm text-secondary sm:px-5">
-            {preview.rows.length} dòng · {preview.validCount} hợp lệ · {preview.errorCount} lỗi
+            {preview.rows.length} dòng · {preview.validCount} hợp lệ · {preview.errorCount} lỗi{excludedRows.size > 0 && ` · ${excludedRows.size} đã loại bỏ`}
           </p>
           <ImportPreviewHeader />
           <ol className="divide-y border-t md:border-t-0">
@@ -197,12 +219,15 @@ export function ImportScreen() {
                   planned={p}
                   cutoff={cutoff}
                   included={include.has(p.row.rowNumber)}
+                  isExcluded={excludedRows.has(p.row.rowNumber)}
                   onIncludeChange={(checked) => {
                     const next = new Set(include)
                     if (checked) next.add(p.row.rowNumber)
                     else next.delete(p.row.rowNumber)
                     setInclude(next)
                   }}
+                  onToggleExclude={handleToggleExclude}
+                  onUpdateRow={handleUpdateRow}
                 />
               </li>
             ))}
@@ -212,7 +237,8 @@ export function ImportScreen() {
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
               <div className="text-sm">
                 <p className="font-semibold">Sẽ thêm vào lịch</p>
-                {errorRows.length > 0 && <p className="text-shortage">Bỏ qua {errorRows.length} dòng lỗi</p>}
+                {unhandledErrors.length > 0 && <p className="text-shortage">Còn {unhandledErrors.length} dòng lỗi chưa xử lý</p>}
+                {excludedRows.size > 0 && <p className="text-secondary">Loại bỏ {excludedRows.size} dòng khỏi đợt nhập</p>}
                 {duplicates.length > 0 && (
                   <p className="text-secondary">Bỏ qua {duplicates.length - duplicates.filter((d) => include.has(d.row.rowNumber)).length} dòng có thể trùng</p>
                 )}
@@ -232,7 +258,7 @@ export function ImportScreen() {
                 onClick={() => void commit()}
                 isDisabled={Boolean(blockedReason)}
                 aria-describedby={blockedReason ? 'commit-blocked' : undefined}
-                label={errorRows.length > 0 ? `Nhập ${toAdd.length} dòng hợp lệ, bỏ ${errorRows.length} dòng lỗi` : `Nhập ${toAdd.length} dòng vào Lịch thu–chi`}
+                label={excludedRows.size > 0 ? `Nhập ${toAdd.length} dòng vào Lịch (bỏ ${excludedRows.size} dòng)` : `Nhập ${toAdd.length} dòng vào Lịch thu–chi`}
               />
             </div>
             {commitError && (

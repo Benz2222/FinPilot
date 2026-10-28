@@ -1,0 +1,5 @@
+Loại,Nội dung,Số tiền,Ngày,Đã thanh toán,Ghi chú
+Chi,Nhập hàng lô 1,15000000,2026-11-05,0,Hàng chuẩn
+Chi,Lô áo thun sai số tiền,-8000000,2026-11-08,0,Số âm bị lỗi
+Thu,Tiền hoàn trả sàn,3500000,ngay-mai,0,Ngày sai định dạng
+Chi,Khoản chi dư thừa,1000000,2026-11-12,0,Dòng muốn bỏ qua

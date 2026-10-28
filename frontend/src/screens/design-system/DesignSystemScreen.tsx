@@ -447,9 +447,14 @@ export function DesignSystemScreen() {
                 <ImportPreviewHeader />
                 <ol className="divide-y border-t md:border-t-0">
                   {dsPlanned.map((p) => (
-                    <li key={p.row.rowNumber}>
-                      <ImportPreviewRow planned={p} cutoff={DS_TODAY} included={p.duplicateOf ? include : true} onIncludeChange={setInclude} />
-                    </li>
+                      <ImportPreviewRow
+                        planned={p}
+                        cutoff={DS_TODAY}
+                        included={p.duplicateOf ? include : true}
+                        onIncludeChange={setInclude}
+                        onToggleExclude={() => {}}
+                        onUpdateRow={() => {}}
+                      />
                   ))}
                 </ol>
               </Specimen>

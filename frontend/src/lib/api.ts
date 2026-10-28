@@ -1,4 +1,4 @@
-import type { ForecastRequest, ForecastResponse, ImportPreview, ProblemDetails } from './types'
+import type { AuditHistoryResponse, ForecastRequest, ForecastResponse, ImportPreview, ProblemDetails } from './types'
 
 /** Failure talking to the API. `status === 0` means the request never got an HTTP response. */
 export class ApiError extends Error {
@@ -127,4 +127,23 @@ export function previewImport(file: File, signal?: AbortSignal): Promise<ImportP
 
 export function importTemplateUrl(format: 'csv' | 'xlsx'): string {
   return `/api/import/template?format=${format}`
+}
+
+function isAuditHistoryResponse(body: unknown): body is AuditHistoryResponse {
+  if (!body || typeof body !== 'object') return false
+  const b = body as AuditHistoryResponse
+  return Array.isArray(b.items) && typeof b.total === 'number'
+}
+
+export function fetchAudit(
+  params: { page?: number; pageSize?: number; entityType?: string; action?: string } = {},
+  signal?: AbortSignal,
+): Promise<AuditHistoryResponse> {
+  const q = new URLSearchParams()
+  if (params.page) q.set('page', params.page.toString())
+  if (params.pageSize) q.set('pageSize', params.pageSize.toString())
+  if (params.entityType) q.set('entityType', params.entityType)
+  if (params.action) q.set('action', params.action)
+  const qs = q.toString()
+  return request('GET', `/api/shop/audit${qs ? `?${qs}` : ''}`, { signal, expect: isAuditHistoryResponse })
 }

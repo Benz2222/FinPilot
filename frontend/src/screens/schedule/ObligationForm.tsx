@@ -25,18 +25,21 @@ export function ObligationForm({
   onSubmit,
   onCancel,
   minDate,
+  allowContinue = false,
 }: {
   initial: ObligationDraft
   submitLabel: string
-  onSubmit: (draft: ObligationDraft) => Promise<boolean>
+  onSubmit: (draft: ObligationDraft, keepOpen?: boolean) => Promise<boolean>
   onCancel?: () => void
   /** Dates before this are flagged (they would land before the forecast starts). */
   minDate?: string
+  allowContinue?: boolean
 }) {
   const { today } = useShop()
   const uid = useId()
   const [draft, setDraft] = useState(initial)
   const [showErrors, setShowErrors] = useState(false)
+  const [lastSaved, setLastSaved] = useState<string | null>(null)
   const errors = validateDraft(draft)
   if (!errors.date && minDate && isValidIsoDate(draft.date) && draft.date < minDate) {
     errors.date = `Ngày này đã tính trong số dư hiện có. Chọn từ ${formatDayMonth(minDate)} trở đi`
@@ -50,18 +53,38 @@ export function ObligationForm({
   ].filter((s) => !minDate || s.date >= minDate)
   const chips = draft.direction ? NAME_CHIPS[draft.direction] : []
 
-  async function submit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault()
+  async function handleSave(keepOpen: boolean, formEl?: HTMLFormElement) {
     if (Object.keys(errors).length > 0) {
       setShowErrors(true)
-      const form = e.currentTarget
-      requestAnimationFrame(() => form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
+      requestAnimationFrame(() => formEl?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
       return
     }
-    if (await onSubmit({ ...draft, label: draft.label.trim(), note: draft.note.trim() })) {
-      setDraft(initial)
-      setShowErrors(false)
+    const savedLabel = draft.label.trim()
+    const success = await onSubmit({ ...draft, label: savedLabel, note: draft.note.trim() }, keepOpen)
+    if (success) {
+      if (keepOpen) {
+        setLastSaved(`Đã lưu “${savedLabel}”.`)
+        setDraft((prev) => ({
+          ...prev,
+          label: '',
+          amount: '',
+          note: '',
+        }))
+        setShowErrors(false)
+        requestAnimationFrame(() => {
+          document.getElementById(id('amount'))?.focus()
+        })
+      } else {
+        setDraft(initial)
+        setShowErrors(false)
+        setLastSaved(null)
+      }
     }
+  }
+
+  async function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    await handleSave(false, e.currentTarget)
   }
 
   return (
@@ -149,14 +172,29 @@ export function ObligationForm({
           <TextField id={id('note')} label="Ghi chú" isOptional value={draft.note} maxLength={500} autoComplete="off" onChange={(note) => setDraft({ ...draft, note })} />
         </div>
 
+        {lastSaved && (
+          <p role="status" className="text-sm font-semibold text-ok @xl:col-span-2">
+            ✓ {lastSaved} Có thể nhập tiếp khoản mới bên dưới.
+          </p>
+        )}
+
         {showErrors && Object.keys(errors).length > 0 && (
           <p role="alert" className="text-sm font-medium text-shortage @xl:col-span-2">
             Còn {Object.keys(errors).length} ô cần điền đúng trước khi lưu.
           </p>
         )}
 
-        <div className="flex gap-2 @xl:col-span-2 @xl:justify-end">
+        <div className="flex flex-wrap gap-2 @xl:col-span-2 @xl:justify-end">
           {onCancel && <Button type="button" variant="secondary" size="lg" label="Hủy" onClick={onCancel} />}
+          {allowContinue && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="lg"
+              label="Lưu & thêm tiếp"
+              onClick={(e) => void handleSave(true, e.currentTarget.closest('form') ?? undefined)}
+            />
+          )}
           <Button type="submit" variant="primary" size="lg" label={submitLabel} className="flex-1 @xl:flex-none" />
         </div>
       </div>
