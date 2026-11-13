@@ -22,6 +22,9 @@ public sealed record PaymentInput
 }
 public sealed record ObligationInput
 {
+    // Response-only ownership marker; never used to establish a link from client input.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Guid? StockDocumentId { get; init; }
     public required Guid Id { get; init; }
     [Required, RegularExpression("^(In|Out)$")] public required string Direction { get; init; }
     [Required, StringLength(200)] public required string Label { get; init; }

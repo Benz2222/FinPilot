@@ -23,6 +23,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
     public DbSet<ImportBatch> ImportBatches => Set<ImportBatch>();
     public DbSet<Scenario> Scenarios => Set<Scenario>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<Product> Products => Set<Product>();
+    public DbSet<StockDocument> StockDocuments => Set<StockDocument>();
+    public DbSet<StockDocumentLine> StockDocumentLines => Set<StockDocumentLine>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -51,13 +54,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
         });
 
         ConfigureShopRecords(builder);
+        ConfigureInventory(builder);
     }
 
     private static void ConfigureShopRecords(ModelBuilder builder)
     {
         // Explicit snake_case names keep the migration aligned with the reference design.
         foreach (var type in new[] { typeof(BalanceSnapshot), typeof(Obligation), typeof(CashTransaction),
-                     typeof(ImportBatch), typeof(Scenario), typeof(AuditLog) })
+                     typeof(ImportBatch), typeof(Scenario), typeof(AuditLog), typeof(Product),
+                     typeof(StockDocument), typeof(StockDocumentLine) })
         {
             var e = builder.Entity(type);
             e.HasKey(nameof(ShopRecord.Id));
@@ -154,6 +159,55 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
             e.Property(x => x.AfterJson).HasColumnType("jsonb");
             e.HasIndex(x => new { x.ShopId, x.OccurredAt });
             e.HasOne<IdentityUser>().WithMany().HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.Restrict);
+        });
+    }
+
+    private static void ConfigureInventory(ModelBuilder builder)
+    {
+        // Keep ownership on every historical obligation, not only the document's current cash link.
+        builder.Entity<Obligation>().HasOne<StockDocument>().WithMany()
+            .HasForeignKey(x => new { x.StockDocumentId, x.ShopId })
+            .HasPrincipalKey(x => new { x.Id, x.ShopId }).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<Product>(e =>
+        {
+            e.ToTable("products", BusinessSchema, t =>
+            {
+                t.HasCheckConstraint("ck_product_name", "length(btrim(name)) > 0");
+                t.HasCheckConstraint("ck_product_prices", "sale_price >= 0 AND sale_price <> 'NaN'::numeric AND cost_price >= 0 AND cost_price <> 'NaN'::numeric");
+                t.HasCheckConstraint("ck_product_low_stock", "low_stock_at IS NULL OR low_stock_at >= 0");
+            });
+            e.Property(x => x.Name).HasMaxLength(200);
+            e.HasIndex(x => new { x.ShopId, x.Code }).IsUnique().HasFilter("code <> ''");
+        });
+        builder.Entity<StockDocument>(e =>
+        {
+            e.ToTable("stock_documents", BusinessSchema, t =>
+            {
+                t.HasCheckConstraint("ck_stock_document_kind", "kind IN ('in','sale','out','count')");
+                t.HasCheckConstraint("ck_stock_document_date", "isfinite(date) AND (cash_date IS NULL OR isfinite(cash_date))");
+                t.HasCheckConstraint("ck_stock_document_cash", "(kind IN ('in','sale') AND cash_date IS NOT NULL AND settled IS NOT NULL) OR (kind IN ('out','count') AND cash_date IS NULL AND settled IS NULL AND obligation_id IS NULL)");
+            });
+            e.Property(x => x.Kind).HasMaxLength(5);
+            e.Property(x => x.Party).HasMaxLength(200);
+            e.Property(x => x.Note).HasMaxLength(1000);
+            e.HasIndex(x => new { x.ShopId, x.Date, x.CreatedAt });
+            e.HasIndex(x => new { x.ObligationId, x.ShopId }).IsUnique();
+            e.HasOne<Obligation>().WithMany().HasForeignKey(x => new { x.ObligationId, x.ShopId })
+                .HasPrincipalKey(x => new { x.Id, x.ShopId }).OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<StockDocumentLine>(e =>
+        {
+            e.ToTable("stock_document_lines", BusinessSchema, t =>
+            {
+                t.HasCheckConstraint("ck_stock_line_quantity", "quantity >= 0");
+                t.HasCheckConstraint("ck_stock_line_price", "unit_price >= 0 AND unit_price <> 'NaN'::numeric");
+                t.HasCheckConstraint("ck_stock_line_position", "position >= 0 AND position < 200");
+            });
+            e.HasIndex(x => new { x.DocumentId, x.ShopId, x.ProductId }).IsUnique().HasFilter("removed_at IS NULL");
+            e.HasOne<StockDocument>().WithMany().HasForeignKey(x => new { x.DocumentId, x.ShopId })
+                .HasPrincipalKey(x => new { x.Id, x.ShopId }).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Product>().WithMany().HasForeignKey(x => new { x.ProductId, x.ShopId })
+                .HasPrincipalKey(x => new { x.Id, x.ShopId }).OnDelete(DeleteBehavior.Restrict);
         });
     }
 

@@ -73,6 +73,14 @@ export function ShopProvider({ children, repository }: { children: ReactNode; re
     [repo],
   )
 
+  const refresh = useCallback(async () => {
+    try {
+      setData(await repo.load())
+    } catch {
+      setSaveError('Đã lưu, nhưng chưa cập nhật được Lịch thu–chi. Hãy tải lại trang để thấy khoản mới.')
+    }
+  }, [repo])
+
   const baseline = useMemo(() => (data ? baselineRequest(data) : null), [data])
   const baselineFingerprint = useMemo(() => fingerprint(baseline), [baseline])
   // Every change to the real data recomputes the forecast (debounced, latest request wins).
@@ -107,6 +115,7 @@ export function ShopProvider({ children, repository }: { children: ReactNode; re
       setLoadError(null)
       setLoadAttempt((n) => n + 1)
     },
+    refresh,
     createShop,
     saveError,
     repository: repo,

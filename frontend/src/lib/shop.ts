@@ -25,6 +25,8 @@ export interface Obligation {
   payments: Payment[]
   /** Set when the line came from an imported file. */
   importedFrom?: string
+  /** Set by the server when a stock document owns the line; read it through `stockDocumentOf`. */
+  stockDocumentId?: string | null
 }
 
 /** Confirmed closing balance at the end of `cutoff`: it already contains every movement up to and including that day. */

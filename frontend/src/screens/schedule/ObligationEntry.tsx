@@ -1,6 +1,6 @@
 import { useId, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
-import { ArrowDownLeft, ArrowUpRight, CalendarClock, CircleCheck, CircleSlash, PencilLine, RotateCcw, Trash2 } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, CalendarClock, CircleCheck, CircleSlash, PackageOpen, PencilLine, RotateCcw, Trash2 } from 'lucide-react'
 import { Badge } from '@astryxdesign/core/Badge'
 import { Button } from '@astryxdesign/core/Button'
 import { Icon } from '@astryxdesign/core/Icon'
@@ -13,10 +13,12 @@ import { RowMenu } from '@/components/RowMenu'
 import type { RowAction } from '@/components/RowMenu'
 import { diffDays, formatDate, formatWeekday, isValidIsoDate } from '@/lib/date'
 import { newId } from '@/lib/id'
+import { stockDocumentOf } from '@/lib/inventory/link'
 import { compareMoney, formatVnd, isZero } from '@/lib/money'
 import { forecastStart, paidTotal, remaining } from '@/lib/shop'
 import type { Obligation } from '@/lib/shop'
 import { cn } from '@/lib/utils'
+import { stockHref } from '@/app/routes'
 import { ObligationForm } from './ObligationForm'
 
 /** The date column of an obligation row: dd/mm, weekday and how far away it is (soon ones as a badge). */
@@ -141,11 +143,13 @@ export function ObligationEntry({ obligation, overdue = false, date }: { obligat
   const done = obligation.status !== 'open'
   const percent = isZero(obligation.amount) ? 0 : Number((BigInt(paid) * 1000n) / BigInt(obligation.amount)) / 10 // display only
   const verb = isIn ? 'thu' : 'trả'
+  // A line made by a nhập hàng or a bán hàng: it changes only through that document.
+  const stockDocument = stockDocumentOf(obligation)
   const save = (o: Obligation) => write((r) => r.saveObligation(o))
   const settleOnCutoff = () =>
     void save({ ...obligation, status: 'paid', payments: [...obligation.payments, { id: newId(), amount: left, date: balance!.cutoff }] })
 
-  if (mode === 'edit') {
+  if (mode === 'edit' && !stockDocument) {
     return (
       <div className="px-4 py-4 sm:px-5">
         <div className="fp-well p-4">
@@ -167,17 +171,20 @@ export function ObligationEntry({ obligation, overdue = false, date }: { obligat
     )
   }
 
-  const actions: RowAction[] = [
-    ...(!done && !overdue ? [{ label: `Ghi nhận đã ${verb}`, icon: CircleCheck, onClick: () => setMode('pay') }] : []),
-    { label: 'Sửa', icon: PencilLine, onClick: () => setMode('edit') },
-    ...(obligation.status === 'open'
-      ? [{ label: 'Hủy khoản', icon: CircleSlash, onClick: () => void save({ ...obligation, status: 'cancelled' }) }]
-      : // A fully paid line has nothing left to reopen; remove a payment instead.
-        obligation.status === 'paid' && isZero(left)
-        ? []
-        : [{ label: 'Mở lại', icon: RotateCcw, onClick: () => void save({ ...obligation, status: 'open' }) }]),
-    { label: 'Xóa', icon: Trash2, onClick: () => setConfirmDelete(true), destructive: true },
-  ]
+  const documentHref = stockDocument ? stockHref(undefined, stockDocument) : '#kho-hang'
+  const actions: RowAction[] = stockDocument
+    ? [{ label: isIn ? 'Mở phiếu bán hàng' : 'Mở phiếu nhập hàng', icon: PackageOpen, onClick: () => (window.location.hash = documentHref) }]
+    : [
+        ...(!done && !overdue ? [{ label: `Ghi nhận đã ${verb}`, icon: CircleCheck, onClick: () => setMode('pay') }] : []),
+        { label: 'Sửa', icon: PencilLine, onClick: () => setMode('edit') },
+        ...(obligation.status === 'open'
+          ? [{ label: 'Hủy khoản', icon: CircleSlash, onClick: () => void save({ ...obligation, status: 'cancelled' }) }]
+          : // A fully paid line has nothing left to reopen; remove a payment instead.
+            obligation.status === 'paid' && isZero(left)
+            ? []
+            : [{ label: 'Mở lại', icon: RotateCcw, onClick: () => void save({ ...obligation, status: 'open' }) }]),
+        { label: 'Xóa', icon: Trash2, onClick: () => setConfirmDelete(true), destructive: true },
+      ]
 
   return (
     <article
@@ -206,6 +213,7 @@ export function ObligationEntry({ obligation, overdue = false, date }: { obligat
             {done && <Badge variant={obligation.status === 'paid' ? 'success' : 'neutral'} label={STATUS_TEXT[obligation.status]} />}
             {overdue && <Badge variant="error" label="Quá hạn" />}
             {obligation.importedFrom && <Badge variant="neutral" label="Từ file" />}
+            {stockDocument && <Badge variant="info" label={isIn ? 'Phiếu bán hàng' : 'Phiếu nhập hàng'} />}
           </h4>
           {obligation.note && <p className="text-sm break-words text-secondary">{obligation.note}</p>}
         </div>
@@ -232,6 +240,7 @@ export function ObligationEntry({ obligation, overdue = false, date }: { obligat
                 {obligation.payments.map((p) => (
                   <li key={p.id} className="num flex items-center gap-1">
                     {formatDate(p.date)}: {formatVnd(p.amount)}
+                    {!stockDocument && (
                     <button
                       type="button"
                       className="min-h-8 rounded px-1.5 font-semibold text-shortage hover:bg-shortage-soft hover:underline"
@@ -242,6 +251,7 @@ export function ObligationEntry({ obligation, overdue = false, date }: { obligat
                     >
                       Bỏ
                     </button>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -249,8 +259,14 @@ export function ObligationEntry({ obligation, overdue = false, date }: { obligat
           )}
           {overdue && mode === 'view' && (
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" label="Đổi ngày" icon={<Icon icon={CalendarClock} />} onClick={() => setMode('reschedule')} />
-              <Button size="sm" variant="ghost" label={`Đã ${verb}`} icon={<Icon icon={CircleCheck} />} onClick={settleOnCutoff} />
+              {stockDocument ? (
+                <Button size="sm" label="Đổi ngày hoặc ghi đã xong trong phiếu" icon={<Icon icon={PackageOpen} />} href={documentHref} />
+              ) : (
+                <>
+                  <Button size="sm" label="Đổi ngày" icon={<Icon icon={CalendarClock} />} onClick={() => setMode('reschedule')} />
+                  <Button size="sm" variant="ghost" label={`Đã ${verb}`} icon={<Icon icon={CircleCheck} />} onClick={settleOnCutoff} />
+                </>
+              )}
             </div>
           )}
         </div>

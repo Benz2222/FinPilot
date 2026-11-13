@@ -34,11 +34,13 @@ Thứ tự ưu tiên:
 2. **Dự báo và cảnh báo:** số dư cuối mỗi ngày trong 8 tuần (56 ngày, là lựa chọn thử nghiệm); biểu đồ, số dư thấp nhất, ngày âm đầu tiên, mức thiếu lớn nhất và khoản liên quan. Không gọi là "dự báo AI".
 3. **Mô phỏng:** tạo, đặt tên, lưu, so sánh kịch bản với phương án cơ sở: nhập ngay, nhập ít hơn, nhập muộn, chia đợt, tiền về trễ. Kịch bản không sửa dữ liệu thực tế.
 
+4. **Kho và doanh thu:** danh sách hàng hoá (mỗi mẫu một dòng), nhập hàng, xuất bán, xuất khác, kiểm kê; tồn kho và giá trị kho theo giá vốn bình quân; doanh thu, lãi gộp và hàng bán chạy theo ngày/tuần/tháng. Phiếu nhập và phiếu bán tự tạo khoản chi, khoản thu trong lịch thu–chi nên dự báo cập nhật theo. Lãi là lãi gộp, chưa trừ thuê mặt bằng, lương và chi phí khác.
+
 Nền tảng: đăng nhập, khôi phục mật khẩu, cách ly dữ liệu theo shop (mỗi tài khoản một shop), lịch sử thay đổi, kiểm thử.
 
 Luồng chính: đăng nhập → nhập số dư và lịch thu–chi → xem dự báo thiếu tiền → tạo phương án nhập hàng → so sánh → chủ shop tự quyết định.
 
-**Chưa làm trong MVP:** Health Score, chatbot AI, OCR/đọc chứng từ, đồng bộ ngân hàng/POS/sàn, SKU và tối ưu tồn kho, kế toán/thuế, báo cáo lợi nhuận đầy đủ, app mobile, tự nhắc nợ, đề xuất vay, chi định kỳ lặp nâng cao (nhập thành từng dòng có ngày).
+**Chưa làm trong MVP:** Health Score, chatbot AI, OCR/đọc chứng từ, đồng bộ ngân hàng/POS/sàn, biến thể size/màu và tối ưu tồn kho, nhập hàng hoá từ file, kế toán/thuế, lãi ròng, app mobile, tự nhắc nợ, đề xuất vay, chi định kỳ lặp nâng cao (nhập thành từng dòng có ngày).
 
 ## Module dài hạn
 
@@ -46,7 +48,7 @@ Chỉ làm sau khi kiểm chứng nhu cầu; không phải cam kết MVP.
 
 | Module | Ghi chú |
 |---|---|
-| Financial Data Hub | Phần nhập liệu thuộc MVP; tồn kho, khoản vay là mở rộng |
+| Financial Data Hub | Phần nhập liệu và kho thuộc MVP; khoản vay là mở rộng |
 | Financial Dashboard | Doanh thu, chi phí, lợi nhuận, burn rate/runway; báo thiếu dữ liệu thay vì coi là 0 |
 | Financial Health Score | 0–100, trọng số đã bàn: thanh khoản 30, dòng tiền 25, lợi nhuận 20, công nợ 15, ổn định 10. Không phải xếp hạng tín dụng |
 | Cash-flow Forecast & Early Warning | Lõi MVP |

@@ -22,6 +22,14 @@ public sealed class ShopController(ShopService service) : ControllerBase, IAsync
     [HttpDelete("scenarios/{id:guid}")] public Task<ShopResponse> DeleteScenario(Guid id, CancellationToken ct) => service.DeleteScenario(Owner, id, ct);
     [HttpPut("data")] public Task<ShopResponse> Replace(ShopInput input, CancellationToken ct) => service.Replace(Owner, input, ct);
 
+    [HttpGet("inventory")] public Task<InventoryResponse> Inventory(CancellationToken ct) => service.ReadInventory(Owner, ct);
+    [HttpPut("inventory/products/{id:guid}")] public Task<InventoryResponse> Product(Guid id, ProductInput input, CancellationToken ct) => service.SaveProduct(Owner, id, input, ct);
+    [HttpDelete("inventory/products/{id:guid}")] public Task<InventoryResponse> DeleteProduct(Guid id, CancellationToken ct) => service.DeleteProduct(Owner, id, ct);
+    [HttpPut("inventory/documents/{id:guid}")] public Task<InventoryResponse> Document(Guid id, StockDocumentInput input, CancellationToken ct) => service.SaveDocument(Owner, id, input, ct);
+    [HttpDelete("inventory/documents/{id:guid}")] public Task<InventoryResponse> DeleteDocument(Guid id, CancellationToken ct) => service.DeleteDocument(Owner, id, ct);
+    [HttpGet("inventory/report")] public Task<SalesReport> Report([FromQuery] DateOnly from, [FromQuery] DateOnly to,
+        CancellationToken ct, [FromQuery] string group = "day") => service.Report(Owner, from, to, group, ct);
+
     // Individual GETs expose only records in the caller's shop, just like full-shop reads.
     [HttpGet("obligations/{id:guid}")]
     public async Task<ActionResult<ObligationInput>> GetObligation(Guid id, CancellationToken ct)

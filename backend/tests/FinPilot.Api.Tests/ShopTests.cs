@@ -124,7 +124,7 @@ public sealed class CapturingEmailDelivery : IEmailDelivery
     }
 }
 
-public sealed class ShopTests(ShopFixture factory) : IClassFixture<ShopFixture>
+public sealed partial class ShopTests(ShopFixture factory) : IClassFixture<ShopFixture>
 {
     [Fact]
     public async Task MailFailuresDoNotBreakAccountEndpointsOrSignIn()
@@ -186,6 +186,9 @@ public sealed class ShopTests(ShopFixture factory) : IClassFixture<ShopFixture>
             SELECT (SELECT count(*) FROM public."AspNetUsers") +
                    (SELECT count(*) FROM public."DataProtectionKeys") +
                    (SELECT count(*) FROM finpilot.shops) +
+                   (SELECT count(*) FROM finpilot.products) +
+                   (SELECT count(*) FROM finpilot.stock_documents) +
+                   (SELECT count(*) FROM finpilot.stock_document_lines) +
                    (SELECT count(*) FROM finpilot.obligation_balances)
             """, reader);
         Assert.Equal(0L, (long)(await read.ExecuteScalarAsync())!);
@@ -324,6 +327,8 @@ public sealed class ShopTests(ShopFixture factory) : IClassFixture<ShopFixture>
         client.DefaultRequestHeaders.Remove("X-CSRF-TOKEN");
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync("/api/shop/balance",
             new { amount = "50", cutoff = "2026-01-01" })).StatusCode);
+        var product = InventoryProduct();
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync(ProductPath(product), product)).StatusCode);
         using var anonymous = factory.CreateClient();
         Assert.Equal(HttpStatusCode.BadRequest, (await anonymous.PostAsJsonAsync("/api/auth/register",
             new { email = "csrf@example.test", password = "Initial-Password1!" })).StatusCode);
