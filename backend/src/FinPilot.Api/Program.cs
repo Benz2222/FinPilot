@@ -197,7 +197,7 @@ app.MapGet("/api/health", () => Results.Ok(new { status = "ok" })).AllowAnonymou
 app.MapControllers();
 app.MapFallbackToFile("index.html");
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() && app.Configuration.GetValue("Database:AutoMigrate", false))
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

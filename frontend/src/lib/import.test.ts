@@ -65,4 +65,16 @@ describe('planImport with edited row', () => {
     expect(planned[0].valid).toBe(true)
     expect(planned[0].duplicateOf).toBeNull()
   })
+
+  it('treats empty or zero paid field as valid when amount is positive', () => {
+    const errors = validateImportRow({
+      direction: 'Out',
+      label: 'Nhập quần jean',
+      amount: '5000000',
+      date: '2026-11-03',
+      paid: '0',
+      note: '',
+    })
+    expect(errors).toHaveLength(0)
+  })
 })

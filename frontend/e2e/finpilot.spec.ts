@@ -1,4 +1,59 @@
 import { test, expect } from '@playwright/test'
+import type { Page } from '@playwright/test'
+
+async function mockAuthenticatedShop(page: Page) {
+  await page.route('**/api/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ email: 'shopowner@finpilot.test' }),
+    })
+  })
+
+  await page.route('**/api/csrf', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ token: 'mock-csrf-token' }),
+    })
+  })
+
+  let currentData = {
+    version: 1,
+    name: 'Shop Thời Trang Mùa Hè',
+    dataVersion: 1,
+    balance: { amount: '50000000', cutoff: '2026-11-01' },
+    obligations: [],
+    scenarios: [],
+    imports: [],
+  }
+
+  await page.route('**/api/shop', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(currentData),
+      })
+    } else {
+      await route.continue()
+    }
+  })
+
+  await page.route('**/api/shop/obligations/**', async (route) => {
+    const payload = route.request().postDataJSON()
+    currentData = {
+      ...currentData,
+      obligations: [...currentData.obligations, payload],
+      dataVersion: currentData.dataVersion + 1,
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(currentData),
+    })
+  })
+}
 
 test.describe('FinPilot MVP Core E2E Tests', () => {
   test('Landing page and authentication routing', async ({ page }) => {
@@ -18,60 +73,7 @@ test.describe('FinPilot MVP Core E2E Tests', () => {
   })
 
   test('Schedule, Quick consecutive entry, and Forecast Flow', async ({ page }) => {
-    // Mock authenticated session
-    await page.route('**/api/auth/me', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ email: 'shopowner@finpilot.test' }),
-      })
-    })
-
-    await page.route('**/api/csrf', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ token: 'mock-csrf-token' }),
-      })
-    })
-
-    // Mock shop data
-    let currentData = {
-      version: 1,
-      name: 'Shop Thời Trang Mùa Hè',
-      dataVersion: 1,
-      balance: { amount: '50000000', cutoff: '2026-11-01' },
-      obligations: [],
-      scenarios: [],
-      imports: [],
-    }
-
-    await page.route('**/api/shop', async (route) => {
-      if (route.request().method() === 'GET') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(currentData),
-        })
-      } else {
-        await route.continue()
-      }
-    })
-
-    await page.route('**/api/shop/obligations/**', async (route) => {
-      const payload = route.request().postDataJSON()
-      currentData = {
-        ...currentData,
-        obligations: [...currentData.obligations, payload],
-        dataVersion: currentData.dataVersion + 1,
-      }
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(currentData),
-      })
-    })
-
+    await mockAuthenticatedShop(page)
     await page.goto('/#lich')
 
     // Verify shop name and balance
@@ -85,12 +87,14 @@ test.describe('FinPilot MVP Core E2E Tests', () => {
   })
 
   test('Import preview with inline editing and exclusion', async ({ page }) => {
+    await mockAuthenticatedShop(page)
     await page.goto('/#nhap-file')
     await expect(page.locator('text=Nhập từ Excel / CSV').first()).toBeVisible()
-    await expect(page.locator('text=Tải mẫu').first()).toBeVisible()
+    await expect(page.locator('text=Mẫu Excel (.xlsx)').first()).toBeVisible()
   })
 
   test('Audit History screen and filter navigation', async ({ page }) => {
+    await mockAuthenticatedShop(page)
     await page.route('**/api/shop/audit*', async (route) => {
       await route.fulfill({
         status: 200,
@@ -117,5 +121,6 @@ test.describe('FinPilot MVP Core E2E Tests', () => {
 
     await page.goto('/#lich-su')
     await expect(page.locator('text=Lịch sử thay đổi').first()).toBeVisible()
+    await expect(page.locator('text=Thêm hoặc cập nhật khoản thu–chi').first()).toBeVisible()
   })
 })

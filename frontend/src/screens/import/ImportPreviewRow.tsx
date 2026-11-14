@@ -83,12 +83,18 @@ export function ImportPreviewRow({
   const beforeStart = p.valid && cutoff && p.row.date! <= cutoff && p.row.paid !== p.row.amount
 
   function handleSaveEdit() {
-    const errors = validateImportRow(draft)
-    const updated: ImportRow = {
+    const normalized: ImportRow = {
       ...draft,
-      errors,
+      label: draft.label?.trim() ?? '',
+      paid: draft.paid?.trim() || '0',
+      note: draft.note?.trim() ?? '',
+      errors: [],
     }
-    onUpdateRow(updated)
+    const errors = validateImportRow(normalized)
+    onUpdateRow({
+      ...normalized,
+      errors,
+    })
     setEditing(false)
   }
 
