@@ -25,7 +25,7 @@ function Price({ value, reduce, format }: { value: number; reduce: boolean; form
     const step = (now: number) => {
       const t = Math.min(1, (now - start) / 550)
       const e = 1 - (1 - t) ** 3
-      const v = Math.round((a + (value - a) * e) / 1000) * 1000
+      const v = t === 1 ? value : Math.round((a + (value - a) * e) / 1000) * 1000
       from.current = v
       setShown(v)
       if (t < 1) raf = requestAnimationFrame(step)
@@ -43,7 +43,8 @@ export function FareCard({ index, billing, active, reduce, onActive }: { index: 
   const fare = t.fares[index]
   const hi = fare.badge !== undefined
   const { month, year } = plan.price
-  const bill = month === 0 ? t.free : billing === 'month' ? t.billedMonthly : t.billedYearly(year * 12, (month - year) * 12)
+  const yearly = plan.annualOnly || billing === 'year'
+  const bill = yearly ? t.billedYearly(year * 12, (month - year) * 12) : t.billedMonthly
   const currency = <span className="text-xl font-bold">₫</span>
   return (
     <article
@@ -61,11 +62,12 @@ export function FareCard({ index, billing, active, reduce, onActive }: { index: 
       </p>
       <h3 id={`fare-${plan.name}`} className="font-display text-3xl font-extrabold tracking-tight">
         {plan.name}
+        <span className="ml-2 align-middle font-mono text-xs font-bold tracking-[0.12em] uppercase opacity-70">{' '}({fare.tier})</span>
       </h3>
       <p className="-mt-2 opacity-80">{fare.for}</p>
       <p className="flex items-baseline gap-1">
         {t.currencyFirst && currency}
-        <Price value={plan.price[billing]} reduce={reduce} format={t.number} />
+        <Price value={yearly ? year : month} reduce={reduce} format={t.number} />
         {!t.currencyFirst && currency}
         <span className="text-sm opacity-80">{t.perMonth}</span>
       </p>
@@ -93,6 +95,8 @@ export function Fares() {
   const t = useCopy().pricing
   const reduce = useReducedMotion()
   const [billing, setBilling] = useState<Billing>('month')
+  // The yearly rate is a discount on twelve monthly ones; read it off the plans so the badge cannot drift from them.
+  const off = Math.round((1 - PLANS[1].price.year / PLANS[1].price.month) * 100)
   const [hover, setHover] = useState<number | null>(null)
   const active = hover ?? 1
   const wrap = useRef<HTMLDivElement>(null)
@@ -142,7 +146,7 @@ export function Fares() {
                 <input type="radio" name="billing" value={b} checked={billing === b} onChange={() => pickBilling(b)} />
                 <span>
                   {b === 'month' ? t.monthly : t.yearly}
-                  {b === 'year' && <b className="rounded-full bg-[var(--fp-hero-ok)] px-1.5 text-xs text-[var(--fp-hero-ink)]">−20%</b>}
+                  {b === 'year' && <b className="rounded-full bg-[var(--fp-hero-ok)] px-1.5 text-xs text-[var(--fp-hero-ink)]">−{off}%</b>}
                 </span>
               </label>
             ))}
