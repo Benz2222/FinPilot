@@ -15,11 +15,15 @@ export type Marked = [string, string, string]
 /** One line of the case-file tape in words: source, text. Its time and money are in BlackBox.tsx. */
 export type TapeWords = [string, string]
 
-/** The plans: the same in every language. There is no billing in the app; every plan starts at sign-up. */
+/**
+ * Planned offers, shared across languages. Billing and plan limits are not implemented in the app.
+ * `year` is the rate per month when twelve months are paid up front, 10% below `month`. Fleet is that yearly
+ * plan of Pro, so it is only ever sold by the year and its `month` is the Pro rate it is measured against.
+ */
 export const PLANS = [
-  { name: 'Glider', cls: 'Y', price: { month: 0, year: 0 } },
-  { name: 'Pilot', cls: 'J', price: { month: 149_000, year: 119_000 } },
-  { name: 'Fleet', cls: 'F', price: { month: 399_000, year: 319_000 } },
+  { name: 'Glider', cls: 'Y', price: { month: 99_000, year: 89_100 }, annualOnly: false },
+  { name: 'Pilot', cls: 'J', price: { month: 199_000, year: 179_100 }, annualOnly: false },
+  { name: 'Fleet', cls: 'F', price: { month: 199_000, year: 179_100 }, annualOnly: true },
 ] as const
 
 const grouped = new Intl.NumberFormat('en-US')
@@ -260,40 +264,42 @@ export const EN = {
   pricing: {
     eyebrow: 'Fares',
     title: ['Pick your ', 'cruising altitude', '.'] as Marked,
-    lede: 'Start on the ground for free. Climb when the forecast starts paying for itself — and come back down any month you like.',
+    lede: 'Pro is free for 7 days, once per account. Then pick the plan that fits your shop — and change it any month you like.',
     period: 'Billing period',
     monthly: 'Monthly',
     yearly: 'Yearly',
     tag: 'Indicative launch pricing · not on sale yet',
-    note: 'Prices in VND, VAT included. No card needed for Glider. Nothing on this page charges or sends anything.',
+    note: 'Prices in VND, VAT included. Nothing on this page charges or sends anything.',
     /** The monthly price: its digits, and the currency sign before or after them. */
     number: (n: number) => grouped.format(n),
     currencyFirst: true,
     perMonth: '/ month',
-    free: 'Free while you need it',
     billedMonthly: 'Billed monthly · cancel any time',
     billedYearly: (total: number, save: number) => `${vnd(total)} billed yearly · save ${vnd(save)}`,
     fares: [
       {
+        tier: 'Basic',
         level: 'FL000 · Ground',
         for: 'For one shop finding its feet.',
-        list: ['1 shop, 56-day forecast', 'Manual cash & bill entry', '1 saved restock scenario', 'Pull-up warning on the chart'],
-        cta: 'Start gliding',
+        list: ['Cash in and cash out, tracked', 'Your financial records in one place', 'Basic reports', 'A capped number of product categories'],
+        cta: 'Choose Glider',
       },
       {
+        tier: 'Pro',
         level: 'FL180 · Climb',
         for: 'For shops that restock every month.',
-        list: ['Everything in Glider', 'Unlimited what-if scenarios', 'Excel & CSV import'],
+        list: ['Everything in Glider', 'Cash-flow forecast', 'Financial what-if simulation', 'Results by day, week or month'],
         cta: 'Choose Pilot',
         badge: 'Most flown',
       },
       {
+        tier: 'Pro · yearly',
         level: 'FL350 · Cruise',
-        for: 'For shops that want help close at hand.',
-        list: ['Everything in Pilot', 'Priority support in Vietnamese'],
+        for: 'For shops that want to see further ahead.',
+        list: ['Everything in Pilot', 'Forecast 1–2 months ahead', 'Risk alerts', 'One payment, the whole year'],
         cta: 'Choose Fleet',
       },
-    ] as { level: string; for: string; list: string[]; cta: string; badge?: string }[],
+    ] as { tier: string; level: string; for: string; list: string[]; cta: string; badge?: string }[],
   },
 
   faq: {
