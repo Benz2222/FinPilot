@@ -14,6 +14,8 @@ export interface ShopContextValue {
   noShop: boolean
   loadError: string | null
   reload: () => void
+  /** Reads the shop again without leaving the screen (after a write that went through another endpoint). A failure keeps the data on screen and says so. */
+  refresh: () => Promise<void>
   createShop: (name: string) => Promise<void>
   /** Last failed write, shown until the next successful one. */
   saveError: string | null

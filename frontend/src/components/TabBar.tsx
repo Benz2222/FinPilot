@@ -7,6 +7,10 @@ export interface TabItem {
   icon: LucideIcon
   /** A red dot with this hidden text (e.g. "có ngày thiếu tiền"). */
   alert?: string
+  /** Makes the tab a button that opens something (a menu) instead of a link to `#id`. */
+  onSelect?: () => void
+  /** Marks the tab as the current one when `current` is not its own id (a menu whose entries include the current screen). */
+  isActive?: boolean
 }
 
 /**
@@ -19,13 +23,15 @@ export function TabBar({ items, current, label, inline = false }: { items: TabIt
       <ul className="grid h-16 gap-1 px-2" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
         {items.map((item) => {
           const Icon = item.icon
-          const active = item.id === current
+          const active = item.isActive ?? item.id === current
+          const className = cn('relative flex h-full w-full flex-col items-center justify-center gap-1 text-xs font-semibold', active ? 'text-primary' : 'text-secondary')
+          const Tag = item.onSelect ? 'button' : 'a'
           return (
             <li key={item.id} className="min-w-0">
-              <a
-                href={`#${item.id}`}
+              <Tag
+                {...(item.onSelect ? { type: 'button' as const, onClick: item.onSelect, 'aria-haspopup': 'dialog' as const } : { href: `#${item.id}` })}
                 aria-current={active ? 'page' : undefined}
-                className={cn('relative flex h-full flex-col items-center justify-center gap-1 text-xs font-semibold', active ? 'text-primary' : 'text-secondary')}
+                className={className}
               >
                 <span className={cn('grid h-7 w-14 place-items-center rounded-full', active && 'tab-bar-active')}>
                   <Icon aria-hidden="true" className="size-5" />
@@ -36,7 +42,7 @@ export function TabBar({ items, current, label, inline = false }: { items: TabIt
                     <span className="sr-only">({item.alert})</span>
                   </span>
                 )}
-              </a>
+              </Tag>
             </li>
           )
         })}

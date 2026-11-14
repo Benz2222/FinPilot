@@ -17,7 +17,7 @@ public sealed class ShopProblem(int status, string title, string type = "shop-er
     public object? Detail { get; } = detail;
 }
 
-public sealed class ShopService(AppDbContext db, IOptions<MvcJsonOptions> jsonOptions)
+public sealed partial class ShopService(AppDbContext db, IOptions<MvcJsonOptions> jsonOptions)
 {
     private JsonSerializerOptions Json => jsonOptions.Value.JsonSerializerOptions;
     private static ShopProblem Missing() => new(404, "Record not found.");
@@ -90,6 +90,10 @@ public sealed class ShopService(AppDbContext db, IOptions<MvcJsonOptions> jsonOp
         ("import", "import") => "Nhập theo đợt từ tệp Excel/CSV",
         ("upsert", "scenario") => "Lưu kịch bản mô phỏng",
         ("remove", "scenario") => "Xóa kịch bản mô phỏng",
+        ("upsert", "product") => "Thêm hoặc cập nhật sản phẩm",
+        ("remove", "product") => "Xóa sản phẩm",
+        ("upsert", "stock-document") => "Thêm hoặc cập nhật phiếu kho",
+        ("remove", "stock-document") => "Xóa phiếu kho",
         ("replace", "shop") => "Thay thế dữ liệu cửa hàng",
         _ => $"{action} {entityType}"
     };
@@ -139,6 +143,7 @@ public sealed class ShopService(AppDbContext db, IOptions<MvcJsonOptions> jsonOp
         {
             var row = await db.Obligations.SingleOrDefaultAsync(x => x.Id == id && x.ShopId == shop.Id && x.RemovedAt == null, ct)
                 ?? throw Missing();
+            await RejectOwnedObligation(shop, id, ct);
             await RemoveObligation(shop, row, ct);
         }, ct);
 
@@ -198,9 +203,12 @@ public sealed class ShopService(AppDbContext db, IOptions<MvcJsonOptions> jsonOp
             if (input.Imports.Select(x => x.FileSha256).Distinct().Count() != input.Imports.Length)
                 throw Invalid("Import hashes must be unique.");
             // All changes, including intermediate SaveChanges, are inside the same transaction.
+            var owned = (await Response(shop, ct)).Obligations.Where(x => x.StockDocumentId != null).ToDictionary(x => x.Id);
+            foreach (var obligation in input.Obligations.Where(x => owned.ContainsKey(x.Id)))
+                if (!SameObligation(obligation, owned[obligation.Id])) throw OwnedObligation();
             var ids = input.Obligations.Select(x => x.Id).ToArray();
             foreach (var row in await db.Obligations.Where(x => x.ShopId == shop.Id && x.RemovedAt == null && !ids.Contains(x.Id)).ToListAsync(ct))
-                await RemoveObligation(shop, row, ct);
+                if (!owned.ContainsKey(row.Id)) await RemoveObligation(shop, row, ct);
             var scenarioIds = input.Scenarios.Select(x => x.Id).ToArray();
             foreach (var row in await db.Scenarios.Where(x => x.ShopId == shop.Id && x.RemovedAt == null && !scenarioIds.Contains(x.Id)).ToListAsync(ct))
                 row.RemovedAt = DateTimeOffset.UtcNow;
@@ -218,27 +226,31 @@ public sealed class ShopService(AppDbContext db, IOptions<MvcJsonOptions> jsonOp
                     });
             }
             await db.SaveChangesAsync(ct);
-            foreach (var obligation in input.Obligations) await UpsertObligation(shop, obligation, ct);
+            foreach (var obligation in input.Obligations.Where(x => !owned.ContainsKey(x.Id))) await UpsertObligation(shop, obligation, ct);
             if (input.Balance is not null) await AppendBalance(shop, input.Balance, ct);
             else shop.CurrentSnapshotId = null;
             await db.SaveChangesAsync(ct);
             foreach (var scenario in input.Scenarios) await UpsertScenario(shop, scenario, ct);
         }, ct);
 
-    private async Task<ShopResponse> Write(string owner, string action, string entityType, Guid entityId,
-        Func<Domain.Shop, Task> change, CancellationToken ct)
+    private Task<ShopResponse> Write(string owner, string action, string entityType, Guid entityId,
+        Func<Domain.Shop, Task> change, CancellationToken ct) =>
+        Write(owner, action, entityType, entityId, change, shop => Response(shop, ct), Summary, ct);
+
+    private async Task<T> Write<T>(string owner, string action, string entityType, Guid entityId,
+        Func<Domain.Shop, Task> change, Func<Domain.Shop, Task<T>> read, Func<T, Guid, string> summarize, CancellationToken ct)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);
         var shop = await db.Shops.FromSqlInterpolated($"SELECT * FROM finpilot.shops WHERE owner_user_id = {owner} FOR UPDATE")
             .SingleOrDefaultAsync(ct) ?? throw NoShop();
         if (entityId == Guid.Empty) entityId = shop.Id;
-        var before = Summary(await Response(shop, ct), entityId);
+        var before = summarize(await read(shop), entityId);
         await change(shop);
         shop.DataVersion++;
         shop.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(ct);
-        var response = await Response(shop, ct);
-        AddAudit(shop, action, entityType, entityId, before, Summary(response, entityId));
+        var response = await read(shop);
+        AddAudit(shop, action, entityType, entityId, before, summarize(response, entityId));
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
         return response;
@@ -257,7 +269,7 @@ public sealed class ShopService(AppDbContext db, IOptions<MvcJsonOptions> jsonOp
         shop.CurrentSnapshotId = snapshot.Id;
     }
 
-    private async Task UpsertObligation(Domain.Shop shop, ObligationInput input, CancellationToken ct)
+    private async Task UpsertObligation(Domain.Shop shop, ObligationInput input, CancellationToken ct, Guid? stockDocumentId = null)
     {
         if (input.Id == Guid.Empty) throw Invalid("An obligation must have a nonempty GUID.");
         Unique(input.Payments.Select(x => x.Id));
@@ -266,6 +278,7 @@ public sealed class ShopService(AppDbContext db, IOptions<MvcJsonOptions> jsonOp
             throw Invalid("A paid obligation must be fully settled by payments.");
         var row = await db.Obligations.SingleOrDefaultAsync(x => x.Id == input.Id, ct);
         if (row is not null && row.ShopId != shop.Id) throw Missing();
+        if (row?.StockDocumentId is Guid ownerDocument && ownerDocument != stockDocumentId) throw OwnedObligation();
         var now = DateTimeOffset.UtcNow;
         if (row is not null && row.Direction != input.Direction)
         {
@@ -282,7 +295,8 @@ public sealed class ShopService(AppDbContext db, IOptions<MvcJsonOptions> jsonOp
             row = new Obligation
             {
                 Id = input.Id, ShopId = shop.Id, Direction = input.Direction, Label = input.Label,
-                Status = input.Status, Notes = input.Note, CreatedBy = shop.OwnerUserId, CreatedAt = now
+                Status = input.Status, Notes = input.Note, CreatedBy = shop.OwnerUserId, CreatedAt = now,
+                StockDocumentId = stockDocumentId
             };
             db.Obligations.Add(row);
         }
@@ -380,6 +394,7 @@ public sealed class ShopService(AppDbContext db, IOptions<MvcJsonOptions> jsonOp
             {
                 Id = x.Id, Direction = x.Direction, Label = x.Label, Amount = x.Amount, Date = x.DueDate,
                 Note = x.Notes, Status = x.Status, ImportedFrom = batches.SingleOrDefault(b => b.Id == x.ImportBatchId)?.FileSha256,
+                StockDocumentId = x.StockDocumentId,
                 Payments = payments.Where(p => p.ObligationId == x.Id).Select(p => new PaymentInput { Id = p.PaymentId, Amount = p.Amount, Date = p.TxDate }).ToArray()
             }).ToArray(),
             Scenarios = scenarios.Select(x => JsonSerializer.Deserialize<ScenarioInput>(x.PayloadJson, Json)!).ToArray(),

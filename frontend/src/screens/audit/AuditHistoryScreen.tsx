@@ -12,6 +12,8 @@ const ENTITY_OPTIONS = [
   { value: 'snapshot', label: 'Số dư chốt' },
   { value: 'scenario', label: 'Kịch bản' },
   { value: 'import', label: 'Nhập file' },
+  { value: 'product', label: 'Sản phẩm' },
+  { value: 'stock-document', label: 'Phiếu kho' },
   { value: 'shop', label: 'Cửa hàng' },
 ]
 

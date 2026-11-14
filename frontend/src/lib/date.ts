@@ -52,3 +52,26 @@ export function formatWeekday(iso: IsoDate): string {
   const t = toUtc(iso)
   return Number.isNaN(t) ? '' : WEEKDAYS[new Date(t).getUTCDay()]
 }
+
+/** Monday of the week containing `iso` (weeks run Monday to Sunday, as on a Vietnamese wall calendar). */
+export function startOfWeek(iso: IsoDate): IsoDate {
+  const weekday = (new Date(toUtc(iso)).getUTCDay() + 6) % 7
+  return addDays(iso, -weekday)
+}
+
+/** First day of the month containing `iso`; `offset` moves whole months (-1 = the month before). */
+export function startOfMonth(iso: IsoDate, offset = 0): IsoDate {
+  const d = new Date(toUtc(iso))
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + offset, 1)).toISOString().slice(0, 10)
+}
+
+/** Last day of the month containing `iso`. */
+export function endOfMonth(iso: IsoDate): IsoDate {
+  return addDays(startOfMonth(iso, 1), -1)
+}
+
+/** `2026-10-06` → `10/2026` */
+export function formatMonthYear(iso: IsoDate): string {
+  const m = ISO_DATE.exec(iso)
+  return m ? `${m[2]}/${m[1]}` : iso
+}

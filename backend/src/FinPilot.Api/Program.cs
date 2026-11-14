@@ -58,7 +58,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
     // Render/Vercel do not have fixed proxy IPs. Trust the nearest proxy's sanitized headers.
-    options.KnownNetworks.Clear();
+    options.KnownIPNetworks.Clear();
     options.KnownProxies.Clear();
     options.AllowedHosts = [publicUri.Host];
 });
@@ -111,12 +111,13 @@ builder.Services.AddRateLimiter(options =>
         ).ExecuteAsync(context.HttpContext);
     };
 
+    var permitLimit = builder.Configuration.GetValue("Auth:RateLimitPermitLimit", 10);
     options.AddPolicy("auth-rate-limit", httpContext =>
     {
         var clientIp = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         return RateLimitPartition.GetFixedWindowLimiter(clientIp, _ => new FixedWindowRateLimiterOptions
         {
-            PermitLimit = 10,
+            PermitLimit = permitLimit,
             Window = TimeSpan.FromMinutes(1),
             QueueLimit = 0
         });

@@ -1,9 +1,10 @@
 import { Suspense, lazy, useState } from 'react'
-import { CalendarRange, CircleAlert, Database, FileSpreadsheet, History, LineChart, LogOut, Split, Trash2 } from 'lucide-react'
+import { CalendarRange, CircleAlert, Database, FileSpreadsheet, History, LineChart, LogOut, MoreHorizontal, Package, Split, Trash2, TrendingUp } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { AppShell as AstryxAppShell } from '@astryxdesign/core/AppShell'
 import { Avatar } from '@astryxdesign/core/Avatar'
 import { Banner } from '@astryxdesign/core/Banner'
+import { BottomSheet } from '@astryxdesign/core/BottomSheet'
 import { DropdownMenu, DropdownMenuDivider, DropdownMenuItem } from '@astryxdesign/core/DropdownMenu'
 import { SideNav, SideNavHeading, SideNavItem, SideNavSection } from '@astryxdesign/core/SideNav'
 import { StatusDot } from '@astryxdesign/core/StatusDot'
@@ -27,6 +28,8 @@ const ForecastScreen = lazy(() => import('@/screens/forecast/ForecastScreen').th
 const ScenariosScreen = lazy(() => import('@/screens/scenarios/ScenariosScreen').then((m) => ({ default: m.ScenariosScreen })))
 const ImportScreen = lazy(() => import('@/screens/import/ImportScreen').then((m) => ({ default: m.ImportScreen })))
 const AuditHistoryScreen = lazy(() => import('@/screens/audit/AuditHistoryScreen').then((m) => ({ default: m.AuditHistoryScreen })))
+const InventoryScreen = lazy(() => import('@/screens/inventory/InventoryScreen').then((m) => ({ default: m.InventoryScreen })))
+const RevenueScreen = lazy(() => import('@/screens/revenue/RevenueScreen').then((m) => ({ default: m.RevenueScreen })))
 
 const ICONS: Record<Route, LucideIcon> = {
   lich: CalendarRange,
@@ -34,7 +37,14 @@ const ICONS: Record<Route, LucideIcon> = {
   'kich-ban': Split,
   'nhap-file': FileSpreadsheet,
   'lich-su': History,
+  'kho-hang': Package,
+  'doanh-thu': TrendingUp,
 }
+
+const GROUPS = [
+  { id: 'tien', title: 'Tiền' },
+  { id: 'hang', title: 'Bán hàng' },
+] as const
 
 /** Account menu: who is signed in, the two whole-shop data actions (sample data, wipe), and sign-out. */
 function AccountMenu({ email, wide }: { email: string; wide: boolean }) {
@@ -127,6 +137,49 @@ function StatusLamp({ compact }: { compact?: boolean }) {
   )
 }
 
+/** The phone's bottom bar: four screens, and "Khác" for the rest (the sheet lists them, the current one marked). */
+function PhoneTabs({ route, short }: { route: Route; short: boolean }) {
+  const [moreOpen, setMoreOpen] = useState(false)
+  const more = ROUTES.filter((r) => r.phone === 'more')
+  return (
+    <>
+      <TabBar
+        label="Màn hình"
+        current={route}
+        items={[
+          ...ROUTES.filter((r) => r.phone === 'tab').map((r) => ({
+            id: r.id,
+            label: r.short,
+            icon: ICONS[r.id],
+            alert: r.id === 'du-bao' && short ? 'có ngày thiếu tiền' : undefined,
+          })),
+          { id: 'khac', label: 'Khác', icon: MoreHorizontal, onSelect: () => setMoreOpen(true), isActive: more.some((r) => r.id === route) },
+        ]}
+      />
+      <BottomSheet label="Màn hình khác" isOpen={moreOpen} onOpenChange={setMoreOpen} height="hug">
+        <ul className="grid gap-1 pb-2">
+          {more.map((r) => {
+            const Icon = ICONS[r.id]
+            return (
+              <li key={r.id}>
+                <a
+                  href={`#${r.id}`}
+                  aria-current={r.id === route ? 'page' : undefined}
+                  onClick={() => setMoreOpen(false)}
+                  className={cn('flex min-h-14 items-center gap-3 rounded-md px-3 text-base font-semibold hover:bg-overlay-hover', r.id === route && 'bg-muted')}
+                >
+                  <Icon aria-hidden="true" className="size-5" />
+                  {r.label}
+                </a>
+              </li>
+            )
+          })}
+        </ul>
+      </BottomSheet>
+    </>
+  )
+}
+
 export function AppShell({ route, email }: { route: Route; email: string }) {
   const { data, noShop, loadError, reload, saveError, forecast } = useShop()
   const short = forecast?.result.firstShortageDate != null
@@ -142,18 +195,20 @@ export function AppShell({ route, email }: { route: Route; email: string }) {
         <SideNav
           header={<SideNavHeading heading="FinPilot" icon={<BrandMark className="size-7" />} headingHref="#lich" subheading={data?.name} />}
         >
-          <SideNavSection title="Màn hình" isHeaderHidden>
-            {ROUTES.map((r) => (
-              <SideNavItem
-                key={r.id}
-                label={r.label}
-                icon={ICONS[r.id]}
-                href={`#${r.id}`}
-                isSelected={r.id === route}
-                endContent={r.id === 'du-bao' && short ? <StatusDot variant="error" label="có ngày thiếu tiền" /> : undefined}
-              />
-            ))}
-          </SideNavSection>
+          {GROUPS.map((g) => (
+            <SideNavSection key={g.id} title={g.title}>
+              {ROUTES.filter((r) => r.group === g.id).map((r) => (
+                <SideNavItem
+                  key={r.id}
+                  label={r.label}
+                  icon={ICONS[r.id]}
+                  href={`#${r.id}`}
+                  isSelected={r.id === route}
+                  endContent={r.id === 'du-bao' && short ? <StatusDot variant="error" label="có ngày thiếu tiền" /> : undefined}
+                />
+              ))}
+            </SideNavSection>
+          ))}
           {/* Right under the screens, not pinned to the window's bottom edge. */}
           <div className="mt-3 grid grid-cols-[minmax(0,1fr)] gap-1 border-t pt-3">
             <StatusLamp />
@@ -202,16 +257,14 @@ export function AppShell({ route, email }: { route: Route; email: string }) {
               {route === 'kich-ban' && <ScenariosScreen />}
               {route === 'nhap-file' && <ImportScreen />}
               {route === 'lich-su' && <AuditHistoryScreen />}
+              {route === 'kho-hang' && <InventoryScreen />}
+              {route === 'doanh-thu' && <RevenueScreen />}
             </Suspense>
           </>
         )}
       </div>
 
-      <TabBar
-        label="Màn hình"
-        current={route}
-        items={ROUTES.map((r) => ({ id: r.id, label: r.short, icon: ICONS[r.id], alert: r.id === 'du-bao' && short ? 'có ngày thiếu tiền' : undefined }))}
-      />
+      <PhoneTabs route={route} short={short} />
     </AstryxAppShell>
   )
 }

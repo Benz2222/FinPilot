@@ -13,7 +13,7 @@ Sản phẩm đang xây theo spec ([product.md](product.md)). Đề xuất chung
 | 5 | [Khách hàng mục tiêu](#5-khách-hàng-mục-tiêu) | Chờ hội ý |
 | 6 | [Khung dự báo](#6-khung-dự-báo) | Chờ hội ý |
 | 7 | [Quy mô thị trường](#7-quy-mô-thị-trường) | Chờ hội ý |
-| 8 | [Tồn kho](#8-tồn-kho) | Chờ hội ý |
+| 8 | Tồn kho | Đã chốt 2026-11-14 |
 | — | [Kịch bản 3–5 năm, dữ liệu 20 km](#đã-chốt) | Đã bỏ |
 
 ## 1. Nhập liệu
@@ -60,25 +60,11 @@ Sản phẩm đang xây theo spec ([product.md](product.md)). Đề xuất chung
 - **Vấn đề:** đó là tiền shop bán hàng, không phải tiền shop chi cho phần mềm tài chính, nên cả ba con số đều lệch.
 - **Đề xuất:** tính lại theo số shop mục tiêu × giá gói (khảo sát: 50.000–100.000 đ/tháng phổ biến nhất). Số liệu gốc ở [research.md § Thị trường](research.md#thị-trường).
 
-## 8. Tồn kho
-
-FinPilot quản lý **tiền chi cho việc nhập hàng**, chưa quản lý **hàng trong kho**.
-
-- **MVP có:** lô hàng định nhập là một khoản chi có số tiền và ngày; app tính ảnh hưởng tới số dư và thử nhập ít hơn, muộn hơn, chia đợt.
-- **MVP chưa có:** số lượng theo mẫu/màu/size, nhập–xuất–tồn, đối chiếu kho thực tế, mẫu nào bán chậm, nên nhập bao nhiêu.
-- **Spec chia 3 mức:** giá trị tồn kho cơ bản thuộc module lõi Data Hub nhưng ngoài 6 tuần MVP; tối ưu theo mặt hàng là bonus; quản lý SKU ghi rõ "chưa làm".
-- **Mâu thuẫn:** cả 2 người phỏng vấn và persona Thủy đều nói nhiều về tồn kho theo mẫu/size và nhập theo trend; người thử tuần 6 rất có thể sẽ hỏi.
-
-Các hướng:
-
-1. **Giữ như spec:** nói rõ với người thử rằng FinPilot quản lý tiền, chưa quản lý kho.
-2. **Thêm ô "giá trị tồn kho hiện tại":** chỉ hiển thị, không vào dự báo. Việc nhỏ.
-3. **Đưa quản lý kho theo SKU vào MVP:** một module mới (products, skus, stock_movements trong plan); không kịp tuần 6.
-
 ## Đã chốt
 
 | Ngày | Quyết định | Việc kéo theo |
 |---|---|---|
 | 2026-10-22 | Bỏ kịch bản tăng trưởng 3–5 năm từ dữ liệu môi trường bán kính 20 km, kể cả dưới dạng tầm nhìn | Xóa khỏi Form week 3 (dòng "Dự báo tăng trưởng 3–5 năm" và gạch đầu dòng thứ ba của "Điểm khác biệt cốt lõi"), slide CP2 (Step 5 trang Solution và vế cuối core value statement), form week 6 Bước 1 |
+| 2026-11-14 | Đưa kho và doanh thu vào sản phẩm: hàng hoá mỗi mẫu một dòng, nhập/xuất/kiểm kê, lãi gộp; chưa có size/màu (xem [product.md](product.md#phạm-vi-mvp)) | Form, slide và demo được nói FinPilot có quản lý kho và báo cáo doanh thu; không nói có biến thể size/màu hay lãi ròng |
 
 Khi chốt một mục ở trên, chuyển nó xuống bảng này và sửa [product.md](product.md) nếu phạm vi thay đổi.

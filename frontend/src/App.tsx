@@ -1,4 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useState, useSyncExternalStore } from 'react'
+import { InventoryProvider } from '@/app/inventory-context'
 import { ShopProvider } from '@/app/shop-context'
 import { AppShell } from '@/app/AppShell'
 import { isLandingHash, readAuthView, readRoute } from '@/app/routes'
@@ -95,7 +96,9 @@ export default function App() {
 
   return (
     <ShopProvider key={session.email}>
-      <AppShell route={route} email={session.email} />
+      <InventoryProvider>
+        <AppShell route={route} email={session.email} />
+      </InventoryProvider>
     </ShopProvider>
   )
 }

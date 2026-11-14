@@ -23,6 +23,7 @@ public sealed class Obligation : ShopRecord
     public required string Notes { get; set; }
     public required string Status { get; set; }
     public Guid? ImportBatchId { get; set; }
+    public Guid? StockDocumentId { get; set; }
     public DateTimeOffset? RemovedAt { get; set; }
     public required string CreatedBy { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
